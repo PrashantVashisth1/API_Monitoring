@@ -1,10 +1,10 @@
 import { BaseClientRepository } from "./BaseClientRepository.js";
-import Client from "../../../shared/models/Client.js";
+// import Client from "../../../shared/models/Client.js";
 import logger from "../../../shared/config/logger.js";
 
-class MongoClientRepository extends BaseClientRepository {
-    constructor() {
-        super(Client);
+export class MongoClientRepository extends BaseClientRepository {
+    constructor(model) {
+        super(model);
     }
 
     async create(clientData) {
@@ -81,4 +81,4 @@ class MongoClientRepository extends BaseClientRepository {
   
 }
 
-export default new MongoClientRepository();
+// export default new MongoClientRepository();

@@ -1,16 +1,21 @@
-import MongoClientRepository from "../repository/ClientRepository.js";
-import MongoApiKeyRepository from "../repository/ApiKeyRepository.js";
+// import MongoClientRepository from "../repository/ClientRepository.js";
+// import MongoApiKeyRepository from "../repository/ApiKeyRepository.js";
 import { ClientService } from "../service/clientService.js";
 import { ClientController } from "../controller/clientController.js";
 import authContainer from "../../auth/Dependencies/dependencies.js";
 import User from "../../../shared/models/User.js";
+import ApiKey from "../../../shared/models/ApiKey.js";
+import Client from "../../../shared/models/Client.js";
 import { MongoUserRepository } from "../../auth/repository/UserRepository.js";
+import { MongoApiKeyRepository } from "../repository/ApiKeyRepository.js";
+import { MongoClientRepository } from "../repository/ClientRepository.js"
+
 
 class Container {
     static init() {
         const repositories = {
-            clientRepository: MongoClientRepository,
-            apiKeyRepository: MongoApiKeyRepository,
+            clientRepository: new MongoClientRepository(Client),
+            apiKeyRepository: new MongoApiKeyRepository(ApiKey),
             userRepository: new MongoUserRepository(User)
         };
 

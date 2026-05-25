@@ -1,10 +1,10 @@
-import ApiKey from "../../../shared/models/ApiKey.js";
+// import ApiKey from "../../../shared/models/ApiKey.js";
 import BaseApiKeyRepository from "./BaseApiKeyRepository.js";
 import logger from "../../../shared/config/logger.js";
 
-class MongoApiKeyRepository extends BaseApiKeyRepository {
-    constructor() {
-        super(ApiKey);
+export class MongoApiKeyRepository extends BaseApiKeyRepository {
+    constructor(model) {
+        super(model);
     }
 
     async create(apiKeyData) {
@@ -61,4 +61,4 @@ class MongoApiKeyRepository extends BaseApiKeyRepository {
     
 }
 
-export default new MongoApiKeyRepository();
+// export default new MongoApiKeyRepository();
