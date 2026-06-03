@@ -40,7 +40,7 @@ services:
       RABBITMQ_DEFAULT_PASS: secure_password
       RABBITMQ_DEFAULT_VHOST: api_monitoring
     ports:
-      - "5673:5672" #AMQP PORT
+      - "8672:5672" #AMQP PORT
       - "15672:15672" # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
