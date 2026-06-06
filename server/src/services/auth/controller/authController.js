@@ -40,11 +40,18 @@ export class AuthController {
 
             const { token, user } = await this.authService.register(userData);
 
-            res.cookie("authToken", token, {
-                httpOnly: config.cookie.httpOnly,
-                secure: config.cookie.secure,
-                maxAge: config.cookie.expiresIn
-            });
+            // BUG FIX: Only set the auth cookie if there is NO existing session.
+            // When a super_admin calls POST /api/auth/register from the Team
+            // Management page they are already authenticated (req.user is set by
+            // the authenticate middleware). Setting the cookie here would silently
+            // replace their session with the newly created user's token.
+            if (!req.user) {
+                res.cookie("authToken", token, {
+                    httpOnly: config.cookie.httpOnly,
+                    secure:   config.cookie.secure,
+                    maxAge:   config.cookie.expiresIn
+                });
+            }
 
             res.status(201).json(ResponseFormatter.success(user, "User created successfully", 201));
         } catch (error) {

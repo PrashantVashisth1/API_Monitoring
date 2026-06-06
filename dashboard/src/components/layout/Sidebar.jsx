@@ -17,7 +17,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Activity, Archive, BookOpen,
-    Building2, LogOut, ChevronRight, Key,
+    Building2, LogOut, ChevronRight, Key, Users,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -60,13 +60,20 @@ const PRIMARY_NAV = [
     },
 ];
 
-// Organizations is Super Admin only — added conditionally in the component
+// Organizations + Team are Super Admin only — added conditionally in the component
 const SUPER_ADMIN_NAV = [
     {
         id:    'orgs',
         label: 'Organizations',
         href:  '/dashboard/organizations',
         icon:  Building2,
+        live:  false,
+    },
+    {
+        id:    'team',
+        label: 'Team',
+        href:  '/dashboard/team',
+        icon:  Users,
         live:  false,
     },
 ];
@@ -136,10 +143,17 @@ export function Sidebar({ isOpen, onClose, onLogout }) {
     const initial      = username.charAt(0).toUpperCase();
     const isSuperAdmin = user?.role === 'super_admin';
 
-    // Build the nav list: base items + super_admin-only items
-    const navItems = isSuperAdmin
-        ? [...PRIMARY_NAV, ...SUPER_ADMIN_NAV]
-        : PRIMARY_NAV;
+    // Build the nav list: base items + role-specific items
+    const isClientAdmin = user?.role === 'client_admin';
+
+    const navItems = [
+        ...PRIMARY_NAV,
+        // client_admin gets a "Team" link to manage their own org's users
+        ...(isClientAdmin ? [{ id: 'team', label: 'Team', href: '/dashboard/team', icon: Users, live: false }] : []),
+        // super_admin gets Organizations + Team
+        ...(isSuperAdmin ? SUPER_ADMIN_NAV : []),
+    ];
+
 
     return (
         <>

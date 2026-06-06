@@ -52,6 +52,9 @@ const TrafficPage = lazy(() =>
 const DocsPage = lazy(() =>
     import('./pages/DocsPage').then(m => ({ default: m.DocsPage }))
 );
+const TeamPage = lazy(() =>
+    import('./pages/TeamPage').then(m => ({ default: m.TeamPage }))
+);
 
 const FullscreenSpinner = ({ label = 'Loading…' }) => (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-3">
@@ -146,6 +149,7 @@ function AuthGate() {
                     <Route path="/dashboard/api-keys"           element={<ApiKeysPage />} />
                     <Route path="/dashboard/traffic"            element={<TrafficPage />} />
                     <Route path="/dashboard/docs"               element={<DocsPage />} />
+                    <Route path="/dashboard/team"               element={<TeamPage />} />
                     {/* Legacy paths: redirect gracefully */}
                     <Route path="/settings"                     element={<Navigate to="/dashboard/settings" replace />} />
                     <Route path="/onboard"                      element={<Navigate to="/dashboard/onboard" replace />} />

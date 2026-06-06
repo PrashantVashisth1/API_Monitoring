@@ -68,7 +68,9 @@ export class MetricsRepository extends BaseRepository {
             const safeLimit = Math.min(Math.max(1, limit), MAX_LIMIT);
             const safeOffset = Math.max(0, offset);
 
-            const query = `
+            // BUG FIX: was `const query` — cannot use += on a const string.
+            // Changed to `let` so WHERE / GROUP BY / ORDER BY clauses are actually appended.
+            let query = `
             SELECT
                 service_name,
                 endpoint,
@@ -80,11 +82,10 @@ export class MetricsRepository extends BaseRepository {
                 MAX(max_latency) as max_latency,
                 time_bucket
             FROM endpoint_metrics
-            `
+            `;
 
             const params = [];
             let paramIndex = 1;
-
 
             let whereConditions = [];
 
@@ -133,7 +134,6 @@ export class MetricsRepository extends BaseRepository {
 
             const result = await this._query(query, params);
             return result.rows;
-
 
         } catch (error) {
             this.logger.error('Error getting endpoint metrics:', error);

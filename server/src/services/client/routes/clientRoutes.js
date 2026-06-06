@@ -16,6 +16,12 @@ const { clientController } = clientDependencies.controllers;
  * require a valid JWT. Unmatched paths fall through to the next router.
  */
 
+// super_admin: all clients. client_admin: their own org only.
+router.get("/admin/clients",
+    authenticate,
+    (req, res, next) => clientController.getClients(req, res, next)
+);
+
 router.post("/admin/clients/onboard",
     authenticate,
     (req, res, next) => clientController.createClient(req, res, next)

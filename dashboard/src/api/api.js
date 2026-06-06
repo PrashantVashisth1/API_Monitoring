@@ -193,6 +193,24 @@ export const clientApi = {
         const response = await api.get(`/admin/clients/${clientId}/api/keys`); // ← was /api-keys
         return response.data;
     },
+    /**
+     * List all client organisations (super_admin only).
+     * Used by Team Management page to populate the client dropdown.
+     */
+    getClients: async () => {
+        const response = await api.get('/admin/clients');
+        return response.data;
+    },
+
+    /**
+     * Register a new user (super_admin or client role).
+     * For super_admin: { username, email, password, role: 'super_admin' }
+     * For client user: use createClientUser instead.
+     */
+    registerUser: async (userData) => {
+        const response = await api.post('/auth/register', userData);
+        return response.data;
+    },
 };
 
 // ─── Admin API (convenience wrappers) ────────────────────────────────────────

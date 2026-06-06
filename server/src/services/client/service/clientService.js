@@ -27,6 +27,13 @@ export class ClientService {
         this.userRepository = dependencies.userRepository;
     }
 
+    /**
+     * List all client organisations. Used by Team Management page.
+     */
+    async listClients(options = {}) {
+        return this.clientRepository.find({}, { sort: { createdAt: -1 }, ...options });
+    }
+
     formatClientForResponse(user) {
         const userObj = user.toObject ? user.toObject() : { ...user };
         delete userObj.password;

@@ -18,9 +18,22 @@ import { PageStatus } from '../components/ui';
 export function OverviewPage() {
     const { data, isPending, error, refetch } = useDashboardQuery();
 
-    const stats         = data?.data?.stats         ?? null;
-    const topEndpoints  = data?.data?.topEndpoints  ?? [];
-    const latencySeries = data?.data?.latencySeries ?? [];
+    const stats         = data?.data?.stats        ?? null;
+    const topEndpoints  = data?.data?.topEndpoints ?? [];
+
+    // Backend sends recentActivity (time-bucketed series).
+    // LatencyLineChart expects: [{ time: 'HH:MM', latency: number }]
+    const rawSeries = data?.data?.recentActivity ?? [];
+    const latencySeries = rawSeries
+        .slice()                          // don't mutate
+        .reverse()                        // oldest → newest for chart left→right
+        .map((row) => ({
+            time:    new Date(row.timeBucket).toLocaleTimeString('en-IN', {
+                         hour: '2-digit', minute: '2-digit',
+                     }),
+            latency: parseFloat(row.avgLatency) || 0,
+        }));
+
 
     if (isPending || error || !data) {
         return (

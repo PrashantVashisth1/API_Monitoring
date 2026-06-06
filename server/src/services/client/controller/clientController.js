@@ -63,4 +63,30 @@ export class ClientController {
             next(error)
         }
     }
+
+    /**
+     * GET /api/admin/clients — List all client organisations.
+     * super_admin: all clients.
+     * client_admin: only their own client (for the "Add User" dropdown).
+     */
+    async getClients(req, res, next) {
+        try {
+            const isSuperAdmin = await this.authService.checkSuperAdminPermissions(req.user.userId);
+
+            let clients;
+            if (isSuperAdmin) {
+                clients = await this.clientService.listClients();
+            } else {
+                // client_admin — return only their own org
+                const myClientId = req.user.clientId;
+                if (!myClientId) return res.status(403).json(ResponseFormatter.error('No client association', 403));
+                const client = await this.clientService.clientRepository.findById(myClientId);
+                clients = client ? [client] : [];
+            }
+
+            return res.status(200).json(ResponseFormatter.success(clients, 'Clients fetched successfully', 200));
+        } catch (error) {
+            next(error);
+        }
+    }
 }
