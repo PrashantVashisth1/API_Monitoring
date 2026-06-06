@@ -11,10 +11,11 @@ import ResponseFormatter from './shared/utils/responseFormatter.js';
 import cookieParser from 'cookie-parser';
 
 // Routers
-import authRouter from "./services/auth/routes/authRouter.js";
-import clientRouter from "./services/client/routes/clientRoutes.js";
-import ingestRouter from "./services/ingest/routes/ingestRoutes.js";
+import authRouter     from "./services/auth/routes/authRouter.js";
+import clientRouter   from "./services/client/routes/clientRoutes.js";
+import ingestRouter   from "./services/ingest/routes/ingestRoutes.js";
 import analyticsRouter from "./services/analytics/routes/analyticsRoutes.js";
+import leadRouter     from "./services/leads/routes/leadRoutes.js";
 
 /**
  * Initialize Express app
@@ -78,10 +79,11 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
-app.use("/api/auth", authRouter);
-app.use("/api/hit", ingestRouter);
+app.use("/api/auth",      authRouter);
+app.use("/api/hit",       ingestRouter);
 app.use("/api/analytics", analyticsRouter);
-app.use("/api", clientRouter);
+app.use("/api",           clientRouter);    // /api/admin/clients/*
+app.use("/api",           leadRouter);      // /api/leads  +  /api/admin/leads/*
 
 
 /**

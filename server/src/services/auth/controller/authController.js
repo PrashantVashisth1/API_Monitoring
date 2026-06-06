@@ -81,6 +81,34 @@ export class AuthController {
         }
     }
 
+    /**
+     * GET /api/auth/status — PUBLIC, no auth required.
+     *
+     * Returns whether the platform has been initialized (i.e. at least one
+     * super_admin exists in the database). Used by the frontend on first load
+     * to decide whether to redirect to /setup.
+     *
+     * Response is intentionally minimal — we don't expose user counts.
+     * { initialized: boolean }
+     *
+     * Performance: This is called ONCE per browser (result is cached in
+     * localStorage as 'apim:initialized'). Not called on every page visit.
+     */
+    async getSystemStatus(req, res, next) {
+        try {
+            const initialized = await this.authService.isPlatformInitialized();
+            res.status(200).json(
+                ResponseFormatter.success(
+                    { initialized },
+                    'System status fetched successfully',
+                    200
+                )
+            );
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async logout(req, res, next) {
         try {
             res.clearCookie("authToken")

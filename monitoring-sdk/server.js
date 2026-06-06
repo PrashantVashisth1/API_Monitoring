@@ -209,6 +209,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(`📝 Blog API running on port ${PORT}`);
+    // console.log(' Monitoring Key:', process.env.MONITORING_API_KEY)
     console.log(`📊 Monitoring: ${process.env.MONITORING_API_KEY ? 'ENABLED' : 'DISABLED'}`);
     console.log(`🔗 Endpoints: http://localhost:${PORT}/api/posts, http://localhost:${PORT}/api/posts/:postId/comments`);
 });

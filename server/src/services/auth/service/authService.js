@@ -149,7 +149,25 @@ export class AuthService {
 
             return user.role === APPLICATION_ROLES.SUPER_ADMIN;
         } catch (error) {
+            throw error;
+        }
+    }
 
+    /**
+     * Check if the platform has been initialized.
+     * Returns true if at least one user exists in the database.
+     * Used by GET /api/auth/status (public endpoint).
+     *
+     * Note: findAll() already exists on userRepository and is used by
+     * onboardSuperAdmin to enforce the single-setup rule.
+     */
+    async isPlatformInitialized() {
+        try {
+            const users = await this.userRepository.findAll();
+            return users && users.length > 0;
+        } catch (error) {
+            logger.error('Error checking platform initialization status:', error);
+            throw error;
         }
     }
 }

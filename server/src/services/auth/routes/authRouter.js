@@ -11,6 +11,15 @@ const router = express.Router();
 const { controller } = dependencies;
 const authController = controller.authController;
 
+/**
+ * GET /api/auth/status — PUBLIC, no auth required.
+ * Returns { initialized: boolean } — used by frontend on first load.
+ * Cached in localStorage after first call — not called on every visit.
+ */
+router.get("/status",
+    (req, res, next) => authController.getSystemStatus(req, res, next)
+);
+
 router.post("/onboard-super-admin",
     requestLogger,
     validate(onboardSuperAdminSchema),

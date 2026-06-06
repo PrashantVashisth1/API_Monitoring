@@ -171,7 +171,7 @@ export class ClientService {
             const keyId = uuidv4();
             const keyValue = this.generateApiKey();
 
-            const apiKey = this.apiKeyRepository.create({
+            const apiKey = await this.apiKeyRepository.create({
                 keyId,
                 keyValue,
                 clientId,

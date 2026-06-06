@@ -1,91 +1,181 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import Login from './components/Login';
-import { authApi } from './api/api';
-import { DashboardLayout } from './components/layout';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { ToastProvider } from './contexts/ToastContext';
-import ErrorBoundary from './components/ErrorBoundary';
+/**
+ * App.jsx — Root application component.
+ *
+ * Provider stack (outermost → innermost):
+ *   ErrorBoundary → QueryClientProvider → ToastProvider → AuthProvider → BrowserRouter
+ *
+ * Routing:
+ *   /          → InitializationGate → LandingPage (if initialized) | redirect /setup
+ *   /setup     → SetupPage (standalone, handles 403 internally if already initialized)
+ *   /*         → AuthGate (decides: loading | login | dashboard)
+ *
+ * Initialization Gate Logic:
+ *   1. Check localStorage('apim:initialized')  — instant, no network call
+ *   2. If absent: call GET /api/auth/status    — ONE db call, then cache result
+ *   3. If not initialized → redirect to /setup
+ *   4. If initialized     → show LandingPage normally
+ *
+ * After /setup completes, SetupPage calls markInitialized() which sets
+ * localStorage('apim:initialized') = 'true' — so the status endpoint is
+ * never called again on this browser.
+ */
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const OverviewPage = lazy(() => import('./pages/OverviewPage').then(m => ({ default: m.OverviewPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+import { ToastProvider }         from './contexts/ToastContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DashboardLayout }       from './components/layout';
+import ErrorBoundary             from './components/ErrorBoundary';
+import Login                     from './components/Login';
+import { SetupPage }             from './pages/SetupPage';
+import { LandingPage }           from './pages/LandingPage';
+import { authApi }               from './api/api';
 
-const pageFallback = (
-    <div style={{ height: '60vh', display: 'grid', placeItems: 'center' }}>Loading…</div>
+// ── Lazy-loaded protected pages ───────────────────────────────────────────────
+const OverviewPage  = lazy(() =>
+    import('./pages/OverviewPage').then(m => ({ default: m.OverviewPage }))
+);
+const SettingsPage  = lazy(() =>
+    import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage }))
+);
+const OnboardClient     = lazy(() => import('./pages/OnboardClient'));
+const OrganizationsPage = lazy(() =>
+    import('./pages/OrganizationsPage').then(m => ({ default: m.OrganizationsPage }))
+);
+const ApiKeysPage = lazy(() =>
+    import('./pages/ApiKeysPage').then(m => ({ default: m.ApiKeysPage }))
+);
+const TrafficPage = lazy(() =>
+    import('./pages/TrafficPage').then(m => ({ default: m.TrafficPage }))
+);
+const DocsPage = lazy(() =>
+    import('./pages/DocsPage').then(m => ({ default: m.DocsPage }))
 );
 
-function AuthGate() {
-    const [isAuthenticated, setIsAuthenticated] = useState(null);
-    const queryClient = useQueryClient();
+const FullscreenSpinner = ({ label = 'Loading…' }) => (
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-zinc-800 border-t-orange-500 animate-spin" />
+        <p className="text-xs text-zinc-600 tracking-widest uppercase">{label}</p>
+    </div>
+);
+
+const PageSpinner = (
+    <div className="flex items-center justify-center h-[60vh]">
+        <div className="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-orange-500 animate-spin" />
+    </div>
+);
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: { refetchOnWindowFocus: false, retry: 1, staleTime: 30_000 },
+    },
+});
+
+// ─── InitializationGate ───────────────────────────────────────────────────────
+// Wraps the "/" landing page route.
+// On first visit (no localStorage flag), calls GET /api/auth/status ONCE.
+// If not initialized → redirects to /setup.
+// If initialized    → renders LandingPage.
+// All subsequent visits use localStorage — zero additional DB calls.
+function InitializationGate() {
+    const navigate = useNavigate();
+    const [checking, setChecking] = useState(
+        // Skip the network call if we already know it's initialized
+        !localStorage.getItem('apim:initialized')
+    );
 
     useEffect(() => {
-        const controller = new AbortController();
-        authApi.getProfile({ signal: controller.signal })
-            .then(() => setIsAuthenticated(true))
-            .catch((err) => {
-                if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
-                    setIsAuthenticated(false);
+        // Already cached — nothing to do
+        if (!checking) return;
+
+        let cancelled = false;
+
+        authApi.getSystemStatus()
+            .then((res) => {
+                if (cancelled) return;
+                if (res?.data?.initialized) {
+                    // Platform ready — cache so we never check again
+                    localStorage.setItem('apim:initialized', 'true');
+                    setChecking(false);
+                } else {
+                    // Fresh install — redirect to setup wizard
+                    navigate('/setup', { replace: true });
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    // Network error / server down — assume initialized, show landing
+                    // (SetupPage will handle the 403 if already initialized anyway)
+                    setChecking(false);
                 }
             });
-        return () => controller.abort();
-    }, []);
 
-    const handleLoginSuccess = () => setIsAuthenticated(true);
+        return () => { cancelled = true; };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleLogout = useCallback(async () => {
-        try { await authApi.logout(); } catch { }
-        queryClient.clear();
-        setIsAuthenticated(false);
-    }, [queryClient]);
+    if (checking) {
+        return <FullscreenSpinner label="Checking platform status" />;
+    }
 
-    useEffect(() => {
-        if (isAuthenticated !== true) return;
-        const handle401 = () => {
-            queryClient.clear();
-            setIsAuthenticated(false);
-        };
-        window.addEventListener('auth:unauthorized', handle401);
-        return () => window.removeEventListener('auth:unauthorized', handle401);
-    }, [isAuthenticated, queryClient]);
+    return <LandingPage />;
+}
 
-    if (isAuthenticated === null) {
-        return (
-            <div style={{ height: '100vh', display: 'grid', placeItems: 'center' }}>
-                Checking authentication…
-            </div>
-        );
+// ─── AuthGate ─────────────────────────────────────────────────────────────────
+function AuthGate() {
+    const { isAuthenticated, isLoading, logout } = useAuth();
+
+    if (isLoading) {
+        return <FullscreenSpinner label="Verifying session" />;
     }
 
     if (!isAuthenticated) {
-        return <Login onLoginSuccess={handleLoginSuccess} />;
+        return <Login />;
     }
 
     return (
-        <DashboardLayout onLogout={handleLogout}>
-            <Suspense fallback={pageFallback}>
+        <DashboardLayout onLogout={logout}>
+            <Suspense fallback={PageSpinner}>
                 <Routes>
-                    <Route path="/" element={<OverviewPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    {/* All protected routes live under /dashboard/* */}
+                    <Route path="/dashboard"                    element={<OverviewPage />} />
+                    <Route path="/dashboard/overview"           element={<OverviewPage />} />
+                    <Route path="/dashboard/onboard"            element={<OnboardClient />} />
+                    <Route path="/dashboard/settings"           element={<SettingsPage />} />
+                    <Route path="/dashboard/organizations"      element={<OrganizationsPage />} />
+                    <Route path="/dashboard/api-keys"           element={<ApiKeysPage />} />
+                    <Route path="/dashboard/traffic"            element={<TrafficPage />} />
+                    <Route path="/dashboard/docs"               element={<DocsPage />} />
+                    {/* Legacy paths: redirect gracefully */}
+                    <Route path="/settings"                     element={<Navigate to="/dashboard/settings" replace />} />
+                    <Route path="/onboard"                      element={<Navigate to="/dashboard/onboard" replace />} />
+                    <Route path="*"                             element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </Suspense>
         </DashboardLayout>
     );
 }
 
-function App() {
+// ─── Root App ─────────────────────────────────────────────────────────────────
+export default function App() {
     return (
         <ErrorBoundary>
-            <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
                 <ToastProvider>
-                    <BrowserRouter>
-                        <AuthGate />
-                    </BrowserRouter>
+                    <AuthProvider>
+                        <BrowserRouter>
+                            <Routes>
+                                {/* "/" checks initialization status, then shows Landing or redirects to Setup */}
+                                <Route path="/"      element={<InitializationGate />} />
+                                {/* Standalone setup wizard — handles 403 if already initialized */}
+                                <Route path="/setup" element={<SetupPage />} />
+                                {/* All other routes — AuthGate decides login vs dashboard */}
+                                <Route path="/*"     element={<AuthGate />} />
+                            </Routes>
+                        </BrowserRouter>
+                    </AuthProvider>
                 </ToastProvider>
-            </ThemeProvider>
+            </QueryClientProvider>
         </ErrorBoundary>
     );
 }
-
-export default App;
