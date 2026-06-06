@@ -141,6 +141,16 @@ export const analyticsApi = {
         const response = await api.get('/analytics/stats', { params });
         return response.data;
     },
+
+    /**
+     * Archive: paginated historical metrics with filters.
+     * Params: { serviceName?, endpoint?, startTime?, endTime?, limit?, page? }
+     * Returns: { rows: [...], page, limit, hasMore }
+     */
+    getArchive: async (params = {}) => {
+        const response = await api.get('/analytics/archive', { params });
+        return response.data;
+    },
 };
 
 // ─── Client API (requires authenticate middleware) ───────────────────────────

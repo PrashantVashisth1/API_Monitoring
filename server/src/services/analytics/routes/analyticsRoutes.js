@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.get("/stats", authenticate, (req, res, next) => analyticsController.getStats(req, res, next));
 
-router.get("/dashboard", authenticate, (req, res, next) => analyticsController.getDashboard(req, res, next))
+router.get("/dashboard", authenticate, (req, res, next) => analyticsController.getDashboard(req, res, next));
+router.get("/archive",   authenticate, (req, res, next) => analyticsController.getArchive(req, res, next));
 
 export default router;

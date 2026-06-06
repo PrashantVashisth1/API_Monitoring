@@ -141,4 +141,47 @@ export class AnalyticsController {
             next(error)
         }
     }
-}
+
+    /**
+     * GET /api/analytics/archive
+     * Paginated historical metrics with filters.
+     * Query params: serviceName, endpoint, startTime, endTime, limit (max 100), page (1-based)
+     */
+    async getArchive(req, res, next) {
+        try {
+            const {
+                serviceName, endpoint,
+                startTime, endTime,
+                limit: rawLimit = '50',
+                page: rawPage = '1',
+            } = req.query;
+
+            const isSuperAdmin = await this.ensureCanViewAnalytics(req);
+            const finalClientId = await this.resolveFinalClientId(req, isSuperAdmin);
+            const timeRange = this.validateTimeRange(startTime, endTime);
+
+            const limit  = Math.min(Math.max(1, parseInt(rawLimit)  || 50),  100);
+            const page   = Math.max(1, parseInt(rawPage) || 1);
+            const offset = (page - 1) * limit;
+
+            const rows = await this.analyticsService.getArchive(finalClientId, {
+                serviceName: serviceName || '',
+                endpoint:    endpoint    || '',
+                startTime:   timeRange.startTime,
+                endTime:     timeRange.endTime,
+                limit,
+                offset,
+            });
+
+            res.status(200).json(
+                ResponseFormatter.success(
+                    { rows, page, limit, hasMore: rows.length === limit },
+                    'Archive data retrieved successfully',
+                    200
+                )
+            );
+        } catch (error) {
+            next(error);
+        }
+    }
+}

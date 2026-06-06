@@ -90,11 +90,11 @@ export class AnalyticsService {
 
     async getTimeSeries(clientId, filters = {}) {
         try {
-            const { serviceName, endpoint, startTime, endTime, limit = 100 } = filters;
+            const { serviceName, endpoint, startTime, endTime, limit = 100, offset = 0 } = filters;
 
             const { endTime: end_time, startTime: start_time } = this.parseTimeFilters({ startTime, endTime });
 
-            const metrics = await this.metricsRepository.getMetrics({ clientId, serviceName, endpoint, startTime: start_time, endTime: end_time, limit })
+            const metrics = await this.metricsRepository.getMetrics({ clientId, serviceName, endpoint, startTime: start_time, endTime: end_time, limit, offset })
 
             return metrics.map((metric) => ({
                 serviceName: metric.service_name,
@@ -109,6 +109,45 @@ export class AnalyticsService {
             }))
         } catch (error) {
             logger.error('Error getting time series:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Archive query — same as timeSeries but with pagination support.
+     * No default time range; caller must provide startTime/endTime.
+     */
+    async getArchive(clientId, filters = {}) {
+        try {
+            const {
+                serviceName, endpoint,
+                startTime, endTime,
+                limit = 50, offset = 0,
+            } = filters;
+
+            const metrics = await this.metricsRepository.getMetrics({
+                clientId,
+                serviceName: serviceName || undefined,
+                endpoint:    endpoint    || undefined,
+                startTime:   startTime   ? new Date(startTime) : undefined,
+                endTime:     endTime     ? new Date(endTime)   : undefined,
+                limit,
+                offset,
+            });
+
+            return metrics.map((m) => ({
+                serviceName: m.service_name,
+                endpoint:    m.endpoint,
+                method:      m.method,
+                totalHits:   parseInt(m.total_hits),
+                errorHits:   parseInt(m.error_hits),
+                avgLatency:  parseFloat(m.avg_latency).toFixed(2),
+                minLatency:  parseFloat(m.min_latency).toFixed(2),
+                maxLatency:  parseFloat(m.max_latency).toFixed(2),
+                timeBucket:  m.time_bucket,
+            }));
+        } catch (error) {
+            logger.error('Error getting archive metrics:', error);
             throw error;
         }
     }
