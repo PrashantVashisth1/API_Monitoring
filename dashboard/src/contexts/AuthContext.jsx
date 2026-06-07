@@ -43,8 +43,8 @@ export function useAuth() {
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }) {
-    const [user,          setUser]          = useState(null);
-    const [isLoading,     setIsLoading]     = useState(true);
+    const [user, setUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [setupRequired, setSetupRequired] = useState(false);
 
     const queryClient = useQueryClient();
@@ -78,6 +78,7 @@ export function AuthProvider({ children }) {
                 const profile = res?.data ?? null;
                 setUser(profile);
                 localStorage.setItem(STORAGE_KEY, 'true');
+                setIsLoading(false);
             })
             .catch((err) => {
                 if (err.name === 'CanceledError' || err.name === 'AbortError') return;
@@ -86,8 +87,8 @@ export function AuthProvider({ children }) {
                 // Always show Login. /setup is navigated to directly by admins.
                 setUser(null);
                 setSetupRequired(false); // ← FIX: never auto-trigger setup wizard
-            })
-            .finally(() => setIsLoading(false));
+                setIsLoading(false);
+            });
 
         return () => controller.abort();
     }, []);
@@ -146,15 +147,15 @@ export function AuthProvider({ children }) {
     }, [queryClient]);
 
     // ── Derived permission helpers ───────────────────────────────────────────
-    const role           = user?.role ?? null;
-    const isSuperAdmin   = role === 'super_admin';
-    const isClientAdmin  = role === 'client_admin';
+    const role = user?.role ?? null;
+    const isSuperAdmin = role === 'super_admin';
+    const isClientAdmin = role === 'client_admin';
     const isClientViewer = role === 'client_viewer';
 
-    const canManageKeys    = isSuperAdmin || !!user?.permissions?.canCreateApiKeys;
-    const canManageUsers   = isSuperAdmin || !!user?.permissions?.canManageUsers;
+    const canManageKeys = isSuperAdmin || !!user?.permissions?.canCreateApiKeys;
+    const canManageUsers = isSuperAdmin || !!user?.permissions?.canManageUsers;
     const canViewAnalytics = isSuperAdmin || !!user?.permissions?.canViewAnalytics;
-    const canExportData    = isSuperAdmin || !!user?.permissions?.canExportData;
+    const canExportData = isSuperAdmin || !!user?.permissions?.canExportData;
 
     // clientId — MongoDB ObjectId string for the user's org.
     // null for super_admin (they query any client via ?clientId=).
@@ -197,3 +198,4 @@ export function AuthProvider({ children }) {
         </AuthContext.Provider>
     );
 }
+
