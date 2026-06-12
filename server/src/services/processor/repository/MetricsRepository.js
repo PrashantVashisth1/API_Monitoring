@@ -232,6 +232,60 @@ export class MetricsRepository extends BaseRepository {
         }
     };
 
+    async getTimeSeriesAggregated(clientId, startTime = null, endTime = null, limit = 48) {
+        try {
+            const safeLimit = Math.min(Math.max(1, limit), MAX_LIMIT);
+
+            let query = `
+            SELECT
+                time_bucket,
+                SUM(avg_latency * total_hits) / NULLIF(SUM(total_hits), 0) as avg_latency,
+                SUM(total_hits) as total_hits,
+                SUM(error_hits) as error_hits
+            FROM endpoint_metrics
+            `;
+
+            const params = [];
+            let paramIndex = 1;
+            const conditions = [];
+
+            if (clientId != null) {
+                conditions.push(`client_id = $${paramIndex}`);
+                params.push(clientId);
+                paramIndex++;
+            }
+
+            if (startTime) {
+                conditions.push(`time_bucket >= $${paramIndex}`);
+                params.push(startTime);
+                paramIndex++;
+            }
+
+            if (endTime) {
+                conditions.push(`time_bucket <= $${paramIndex}`);
+                params.push(endTime);
+                paramIndex++;
+            }
+
+            if (conditions.length > 0) {
+                query += ` WHERE ${conditions.join(' AND ')}`;
+            }
+
+            query += `
+                GROUP BY time_bucket
+                ORDER BY time_bucket ASC
+                LIMIT $${paramIndex}
+            `;
+            params.push(safeLimit);
+
+            const result = await this._query(query, params);
+            return result.rows;
+        } catch (error) {
+            this.logger.error('Error getting aggregated time series:', error);
+            throw error;
+        }
+    };
+
     _query(sql, params = [], client = this.postgres) {
         const target = client || this.postgres;
 

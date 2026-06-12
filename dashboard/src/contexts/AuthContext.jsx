@@ -96,13 +96,17 @@ export function AuthProvider({ children }) {
     // ── Global 401 listener ─────────────────────────────────────────────────
     // api.js interceptor fires 'auth:unauthorized' when any protected request
     // gets a 401 (e.g. session expired mid-use). Clear state → user sees Login.
+    // IMPORTANT: Do NOT clear state for guest users — they intentionally have no
+    // real auth token; their 401s are expected and should be handled per-page.
     useEffect(() => {
         if (isLoading) return;
 
         const handle401 = () => {
+            // Guest sessions are local-only (no real JWT) — 401s are expected
+            if (localStorage.getItem(GUEST_KEY) === 'true') return;
             queryClient.clear();
             setUser(null);
-            setSetupRequired(false); // never auto-trigger setup on session expiry
+            setSetupRequired(false);
         };
 
         window.addEventListener('auth:unauthorized', handle401);

@@ -84,12 +84,23 @@ const queryClient = new QueryClient({
 // If not initialized → redirects to /setup.
 // If initialized    → renders LandingPage.
 // All subsequent visits use localStorage — zero additional DB calls.
+//
+// KEY IMPROVEMENT: If user is already authenticated (cookie still valid) OR
+// has an active guest session, redirect them straight to /dashboard.
 function InitializationGate() {
     const navigate = useNavigate();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [checking, setChecking] = useState(
         // Skip the network call if we already know it's initialized
         !localStorage.getItem('apim:initialized')
     );
+
+    // If auth is resolved and user is logged in (real or guest), skip landing
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [authLoading, isAuthenticated, navigate]);
 
     useEffect(() => {
         // Already cached — nothing to do
@@ -112,7 +123,6 @@ function InitializationGate() {
             .catch(() => {
                 if (!cancelled) {
                     // Network error / server down — assume initialized, show landing
-                    // (SetupPage will handle the 403 if already initialized anyway)
                     setChecking(false);
                 }
             });
@@ -120,8 +130,8 @@ function InitializationGate() {
         return () => { cancelled = true; };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (checking) {
-        return <FullscreenSpinner label="Checking platform status" />;
+    if (authLoading || checking) {
+        return <FullscreenSpinner label="Loading Pulse API…" />;
     }
 
     return <LandingPage />;

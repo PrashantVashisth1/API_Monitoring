@@ -98,17 +98,52 @@ export class AnalyticsService {
 
             return metrics.map((metric) => ({
                 serviceName: metric.service_name,
-                endpoint: metric.endpoint,
-                method: metric.method,
-                totalHits: parseInt(metric.total_hits),
-                errorHits: parseInt(metric.error_hits),
-                avgLatency: parseFloat(metric.avg_latency).toFixed(2),
-                minLatency: parseFloat(metric.min_latency).toFixed(2),
-                maxLatency: parseFloat(metric.max_latency).toFixed(2),
-                timeBucket: metric.time_bucket,
+                endpoint:    metric.endpoint,
+                method:      metric.method,
+                totalHits:   parseInt(metric.total_hits),
+                errorHits:   parseInt(metric.error_hits),
+                avgLatency:  parseFloat(metric.avg_latency).toFixed(2),
+                minLatency:  parseFloat(metric.min_latency).toFixed(2),
+                maxLatency:  parseFloat(metric.max_latency).toFixed(2),
+                // pg returns TIMESTAMP WITHOUT TIME ZONE as a Date object (local-time-aware).
+                // Serialize to ISO string so the frontend always gets a UTC-anchored string.
+                timeBucket: metric.time_bucket instanceof Date
+                    ? metric.time_bucket.toISOString()
+                    : new Date(metric.time_bucket).toISOString(),
             }))
         } catch (error) {
             logger.error('Error getting time series:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Aggregated hourly trend — groups ALL endpoints by time_bucket only.
+     * Used by the dashboard latency trend chart.
+     * Returns an array ordered by time_bucket ASC, each point has:
+     *   { timeBucket, avgLatency, totalHits, errorHits }
+     */
+    async getAggregatedTimeSeries(clientId, filters = {}) {
+        try {
+            const { startTime, endTime } = this.parseTimeFilters(filters);
+            const metrics = await this.metricsRepository.getTimeSeriesAggregated(
+                clientId,
+                startTime,
+                endTime,
+                48 // up to 48 hourly buckets (7D coverage at hourly granularity)
+            );
+
+            return metrics.map((m) => ({
+                // Serialize to ISO string — see getTimeSeries comment above
+                timeBucket: m.time_bucket instanceof Date
+                    ? m.time_bucket.toISOString()
+                    : new Date(m.time_bucket).toISOString(),
+                avgLatency: parseFloat(m.avg_latency) || 0,
+                totalHits:  parseInt(m.total_hits)   || 0,
+                errorHits:  parseInt(m.error_hits)   || 0,
+            }));
+        } catch (error) {
+            logger.error('Error getting aggregated time series:', error);
             throw error;
         }
     }
@@ -144,7 +179,10 @@ export class AnalyticsService {
                 avgLatency:  parseFloat(m.avg_latency).toFixed(2),
                 minLatency:  parseFloat(m.min_latency).toFixed(2),
                 maxLatency:  parseFloat(m.max_latency).toFixed(2),
-                timeBucket:  m.time_bucket,
+                // Serialize to ISO string — see getTimeSeries comment above
+                timeBucket:  m.time_bucket instanceof Date
+                    ? m.time_bucket.toISOString()
+                    : new Date(m.time_bucket).toISOString(),
             }));
         } catch (error) {
             logger.error('Error getting archive metrics:', error);

@@ -21,18 +21,16 @@ export function OverviewPage() {
     const stats         = data?.data?.stats        ?? null;
     const topEndpoints  = data?.data?.topEndpoints ?? [];
 
-    // Backend sends recentActivity (time-bucketed series).
+    // Backend sends recentActivity as aggregated hourly series (ISO timestamps with Z):
+    // [{ timeBucket: "2026-06-12T18:30:00.000Z", avgLatency, totalHits, errorHits }]
     // LatencyLineChart expects: [{ time: 'HH:MM', latency: number }]
     const rawSeries = data?.data?.recentActivity ?? [];
-    const latencySeries = rawSeries
-        .slice()                          // don't mutate
-        .reverse()                        // oldest → newest for chart left→right
-        .map((row) => ({
-            time:    new Date(row.timeBucket).toLocaleTimeString('en-IN', {
-                         hour: '2-digit', minute: '2-digit',
-                     }),
-            latency: parseFloat(row.avgLatency) || 0,
-        }));
+    const latencySeries = rawSeries.map((row) => ({
+        time:    new Date(row.timeBucket).toLocaleTimeString('en-IN', {
+                     hour: '2-digit', minute: '2-digit',
+                 }),
+        latency: Math.round(parseFloat(row.avgLatency) || 0),
+    }));
 
 
     if (isPending || error || !data) {

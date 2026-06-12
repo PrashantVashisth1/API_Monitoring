@@ -16,10 +16,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Key, Plus, Copy, Check, AlertTriangle, Loader2,
     ShieldCheck, Clock, Globe, Code2, RefreshCw, Eye, EyeOff,
-    CheckCircle2, XCircle,
+    CheckCircle2, XCircle, Lock, ArrowRight,
 } from 'lucide-react';
 import { clientApi } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from '../components/ui/Modal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -353,9 +354,59 @@ function KeyRow({ apiKey }) {
     );
 }
 
+// ─── Guest Locked UI ─────────────────────────────────────────────────────────
+function GuestLockedApiKeys() {
+    const navigate = useNavigate();
+    const handleSignIn = () => {
+        localStorage.removeItem('apim:guest');
+        navigate('/login', { replace: true });
+    };
+    return (
+        <div className="flex flex-col gap-6">
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-semibold text-orange-500 uppercase tracking-widest">■ Security</span>
+                </div>
+                <h1 className="text-xl font-black text-zinc-100 tracking-tight">API Keys</h1>
+                <p className="text-sm text-zinc-600 mt-0.5">Manage authentication keys for your SDK integration</p>
+            </div>
+            <div className="bg-[#111111] border border-zinc-800/60 rounded-2xl p-12 flex flex-col items-center text-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                    <Lock className="w-7 h-7 text-zinc-600" />
+                </div>
+                <div className="space-y-2 max-w-sm">
+                    <h2 className="text-base font-bold text-zinc-200">Authentication Required</h2>
+                    <p className="text-sm text-zinc-600 leading-relaxed">
+                        API Keys are tied to your organisation account. Sign in to generate,
+                        view, and manage your monitoring keys.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSignIn}
+                        className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                        Sign In <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 text-sm px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ApiKeysPage() {
     const { user }       = useAuth();
+    const isGuest        = user?.isGuest === true;
+
+    if (isGuest) return <GuestLockedApiKeys />;
+
     const clientId       = user?.clientId;
     const canGenerate    = user?.role === 'client_admin' || user?.role === 'super_admin';
 

@@ -4,6 +4,8 @@
  * Shell layout wrapping all authenticated pages.
  * Top bar shows: LIVE STATUS badge | platform info | time window selector | refresh | (mobile menu).
  * The logout action is delegated to the Sidebar's "Terminate Session" button.
+ *
+ * TimeWindowProvider wraps this layout so all pages share the same window state.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,26 +13,34 @@ import { Sidebar } from './Sidebar';
 import { Menu, X, RefreshCw, Radio } from 'lucide-react';
 import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { useDashboardQuery } from '../../hooks/useDashboardQuery';
-import { QUERY_KEYS } from '../../constants';
+import { TimeWindowProvider, useTimeWindow } from '../../contexts/TimeWindowContext';
 
-const TIME_WINDOWS = ['1H', '24H', '7D'];
+const TIME_WINDOWS = ['24H', '7D'];
 
-export function DashboardLayout({ children, onLogout }) {
-    const [sidebarOpen,   setSidebarOpen]   = useState(false);
-    const [timeWindow,    setTimeWindow]     = useState('24H');
-    const queryClient = useQueryClient();
-    const navigate    = useNavigate();
+// ── Inner layout (needs TimeWindowContext already mounted) ────────────────────
+function DashboardLayoutInner({ children, onLogout }) {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const queryClient  = useQueryClient();
+    const navigate     = useNavigate();
+    const { timeWindow, setTimeWindow } = useTimeWindow();
 
-    const isFetching    = useIsFetching({ queryKey: QUERY_KEYS.DASHBOARD }) > 0;
-    const { dataUpdatedAt } = useDashboardQuery({ notifyOnChangeProps: ['dataUpdatedAt'] });
+    // Watch ALL in-flight queries for the sync spinner
+    const isFetching = useIsFetching() > 0;
+
+    // Warm up the query (needed for dataUpdatedAt)
+    useDashboardQuery({ notifyOnChangeProps: ['dataUpdatedAt'] });
 
     const handleRefresh = () => {
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD });
+        // Invalidate every cached query so all pages reload
+        queryClient.invalidateQueries();
     };
 
     const handleLogout = async () => {
-        navigate('/');
+        // Logout first (clears cookie + user state), THEN navigate.
+        // Reversing the order causes a race: InitializationGate would see
+        // isAuthenticated=true and redirect back to /dashboard before logout completes.
         await onLogout();
+        navigate('/', { replace: true });
     };
 
     return (
@@ -80,14 +90,14 @@ export function DashboardLayout({ children, onLogout }) {
                             <div className="hidden md:flex items-center gap-1.5">
                                 <Radio className="w-3 h-3 text-zinc-600" />
                                 <span className="text-[11px] text-zinc-600 font-mono uppercase tracking-wider">
-                                    Platform Core
+                                    Pulse API
                                 </span>
                             </div>
                         </div>
 
                         {/* Right: time window + refresh */}
                         <div className="flex items-center gap-3">
-                            {/* Time window toggle */}
+                            {/* Time window toggle — NOW FUNCTIONAL */}
                             <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 gap-0.5">
                                 {TIME_WINDOWS.map((w) => (
                                     <button
@@ -105,14 +115,14 @@ export function DashboardLayout({ children, onLogout }) {
                                 ))}
                             </div>
 
-                            {/* Refresh */}
+                            {/* Sync / Refresh — spins while ANY query is fetching */}
                             <button
                                 onClick={handleRefresh}
                                 disabled={isFetching}
-                                aria-label="Refresh data"
+                                aria-label="Refresh all data"
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-40"
                             >
-                                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin text-orange-500' : ''}`} />
+                                <RefreshCw className={`w-3.5 h-3.5 transition-transform ${isFetching ? 'animate-spin text-orange-500' : ''}`} />
                                 <span className="hidden sm:inline">Sync</span>
                             </button>
                         </div>
@@ -127,5 +137,16 @@ export function DashboardLayout({ children, onLogout }) {
                 </main>
             </div>
         </div>
+    );
+}
+
+// ── Exported wrapper — mounts the TimeWindowProvider ─────────────────────────
+export function DashboardLayout({ children, onLogout }) {
+    return (
+        <TimeWindowProvider>
+            <DashboardLayoutInner onLogout={onLogout}>
+                {children}
+            </DashboardLayoutInner>
+        </TimeWindowProvider>
     );
 }

@@ -12,10 +12,11 @@
  *  5. Verification
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     BookOpen, Copy, Check, Terminal, Key, Zap,
     CheckCircle2, Code2, Package, Settings2, PlayCircle,
-    ChevronRight, Activity,
+    ChevronRight, Activity, Lock, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -93,6 +94,8 @@ function Section({ icon: Icon, title, step, children }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function DocsPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const isGuest  = user?.isGuest === true;
     const apiKeyHint = 'apim_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
     // Code snippets
@@ -188,6 +191,26 @@ curl http://localhost:3000/api/products
 
     return (
         <div className="flex flex-col gap-8 max-w-3xl">
+            {/* ── Guest banner ────────────────────────────────────────────── */}
+            {isGuest && (
+                <div className="flex items-start gap-4 p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+                    <Lock className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-orange-300 mb-0.5">Sign in to copy the integration code</p>
+                        <p className="text-xs text-zinc-500 leading-relaxed">
+                            You can read the guide below, but code snippets are blurred for guest sessions.
+                            Sign in to reveal your personalised integration steps.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => { localStorage.removeItem('apim:guest'); navigate('/login', { replace: true }); }}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold bg-orange-500 hover:bg-orange-400 text-white px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors"
+                    >
+                        Sign In <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
+
             {/* ── Page header ──────────────────────────────────────────────── */}
             <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -236,6 +259,26 @@ curl http://localhost:3000/api/products
 
             {/* Divider */}
             <div className="border-t border-zinc-800/60" />
+
+            {/* ── Steps (blurred for guests) ────────────────────────────────────── */}
+            <div className={`space-y-8 ${isGuest ? 'relative' : ''}`}>
+                {isGuest && (
+                    <div className="absolute inset-0 z-10 flex items-start justify-center pt-16 rounded-xl"
+                         style={{ backdropFilter: 'blur(6px)', background: 'rgba(10,10,10,0.55)' }}>
+                        <div className="flex flex-col items-center gap-4 text-center px-6">
+                            <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center">
+                                <Lock className="w-6 h-6 text-zinc-500" />
+                            </div>
+                            <p className="text-sm font-semibold text-zinc-300">Sign in to view the complete integration guide</p>
+                            <button
+                                onClick={() => { localStorage.removeItem('apim:guest'); navigate('/login', { replace: true }); }}
+                                className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors"
+                            >
+                                Sign In <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
             {/* ── Step 1 ─────────────────────────────────────────────────────── */}
             <Section step="1" title="Install dependencies">
@@ -294,6 +337,8 @@ curl http://localhost:3000/api/products
                     </p>
                 </div>
             </Section>
+
+            </div>{/* end blur wrapper */}
 
             {/* ── How it works ─────────────────────────────────────────────── */}
             <div className="border-t border-zinc-800/60 pt-6 space-y-4">

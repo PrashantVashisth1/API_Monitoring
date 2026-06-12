@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { analyticsApi } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
+import { mockTrafficData } from '../utils/mockDashboardData';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 10_000; // 10 seconds
@@ -83,8 +84,9 @@ function ErrorRateCell({ rate, errorHits, totalHits }) {
 
 const fmtBucket = (ts) => {
     if (!ts) return '—';
-    const d = new Date(ts);
-    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Backend now sends proper ISO strings with Z (UTC-anchored).
+    // new Date(isoString) correctly converts UTC → local (IST) for display.
+    return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -169,6 +171,7 @@ function TrafficRow({ hit, isNew }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function TrafficPage() {
     const { user }    = useAuth();
+    const isGuest = user?.isGuest === true;
     const [tick, setTick] = useState(0);          // countdown display
     const [newIds, setNewIds] = useState(new Set()); // highlight new rows
     const prevDataRef = useRef([]);
@@ -184,15 +187,18 @@ export function TrafficPage() {
         return () => clearInterval(intervalId);
     }, []);
 
-    // ── Data fetch ─────────────────────────────────────────────────────────────
-    const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    // ── Data fetch (real users) ─────────────────────────────────────────────
+    const { data: realData, isLoading, isError, refetch, isFetching } = useQuery({
         queryKey: ['live-traffic', user?.clientId],
         queryFn:  () => analyticsApi.getDashboard(),
         refetchInterval: REFRESH_INTERVAL,
-        select: (res) => res?.data?.recentActivity ?? [],
+        // Read recentTraffic (per-endpoint rows) — NOT recentActivity (aggregated chart data)
+        select: (res) => res?.data?.recentTraffic ?? [],
+        // Skip network call entirely for guests
+        enabled: !isGuest,
     });
 
-    const hits = data ?? [];
+    const hits = isGuest ? mockTrafficData : (realData ?? []);
 
     // Detect new rows and highlight them briefly
     useEffect(() => {

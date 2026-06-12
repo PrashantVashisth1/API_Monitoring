@@ -48,7 +48,7 @@ export default function Login() {
                             </div>
                             <div className="space-y-1">
                                 <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">
-                                    API Monitor
+                                    Pulse API
                                 </h1>
                                 <p className="text-sm text-zinc-500">
                                     Sign in to access your dashboard

@@ -16,16 +16,20 @@ import { useQuery } from '@tanstack/react-query';
 import {
     Archive, Search, RefreshCw, ChevronLeft, ChevronRight,
     AlertTriangle, Loader2, Clock, Zap, BarChart2, Filter,
-    CalendarDays, X,
+    CalendarDays, X, Lock, ArrowRight,
 } from 'lucide-react';
 import { analyticsApi } from '../api/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 50;
 
-/** Format ISO string to local date-time */
+/** Format ISO string to local date-time — backend sends UTC ISO strings (with Z) */
 const fmtTime = (iso) => {
     if (!iso) return '—';
+    // Backend normalizes time_bucket to .toISOString() (UTC with Z).
+    // new Date() correctly applies local timezone offset (IST).
     return new Date(iso).toLocaleString('en-IN', {
         day:    '2-digit',
         month:  'short',
@@ -112,8 +116,68 @@ function SummaryBar({ rows }) {
     );
 }
 
+// ─── Guest Locked UI ─────────────────────────────────────────────────────────
+function GuestLockedArchive() {
+    const navigate = useNavigate();
+
+    const handleSignIn = () => {
+        // Clear the guest flag so AuthGate renders <Login /> instead of redirecting to /dashboard
+        localStorage.removeItem('apim:guest');
+        navigate('/login', { replace: true });
+    };
+
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Header */}
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-semibold text-orange-500 uppercase tracking-widest">
+                        ■ Historical Data
+                    </span>
+                </div>
+                <h1 className="text-xl font-black text-zinc-100 tracking-tight">Archive</h1>
+                <p className="text-sm text-zinc-600 mt-0.5">Query historical API metrics with date range and filters</p>
+            </div>
+
+            {/* Locked state */}
+            <div className="bg-[#111111] border border-zinc-800/60 rounded-2xl p-12 flex flex-col items-center text-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                    <Lock className="w-7 h-7 text-zinc-600" />
+                </div>
+                <div className="space-y-2 max-w-sm">
+                    <h2 className="text-base font-bold text-zinc-200">Authentication Required</h2>
+                    <p className="text-sm text-zinc-600 leading-relaxed">
+                        The Archive lets you query historical API metrics across any date range.
+                        Sign in to access your organisation&apos;s real data.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSignIn}
+                        className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                        Sign In
+                        <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 text-sm px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ArchivePage() {
+    const { user } = useAuth();
+    const isGuest  = user?.isGuest === true;
+
+    // Show locked UI for guests — no API calls
+    if (isGuest) return <GuestLockedArchive />;
     // ── Filters ────────────────────────────────────────────────────────────────
     const [filters, setFilters] = useState({
         serviceName: '',
@@ -338,8 +402,8 @@ export function ArchivePage() {
                 </div>
 
                 {/* Column headers */}
-                <div className="grid grid-cols-[2fr_3fr_1fr_1.5fr_1fr_1fr_1fr_2fr] gap-x-4 px-5 py-2.5 border-b border-zinc-800/40">
-                    {['Service', 'Endpoint', 'Method', 'Avg Latency', 'Min', 'Max', 'Error %', 'Time Bucket'].map(h => (
+                <div className="grid grid-cols-[2fr_3fr_1fr_1fr_1.5fr_1fr_1fr_1fr_2fr] gap-x-4 px-5 py-2.5 border-b border-zinc-800/40">
+                    {['Service', 'Endpoint', 'Method', 'Hits', 'Avg Latency', 'Min', 'Max', 'Error %', 'Time Bucket'].map(h => (
                         <span key={h} className="text-[9px] font-semibold text-zinc-700 uppercase tracking-widest">
                             {h}
                         </span>
@@ -368,7 +432,7 @@ export function ArchivePage() {
                         {rows.map((row, idx) => (
                             <div
                                 key={`${row.serviceName}-${row.endpoint}-${row.timeBucket}-${idx}`}
-                                className="grid grid-cols-[2fr_3fr_1fr_1.5fr_1fr_1fr_1fr_2fr] gap-x-4 px-5 py-3 hover:bg-zinc-800/20 transition-colors items-center group"
+                                className="grid grid-cols-[2fr_3fr_1fr_1fr_1.5fr_1fr_1fr_1fr_2fr] gap-x-4 px-5 py-3 hover:bg-zinc-800/20 transition-colors items-center group"
                             >
                                 {/* Service */}
                                 <p className="text-xs font-semibold text-zinc-300 truncate">{row.serviceName}</p>
@@ -378,6 +442,11 @@ export function ArchivePage() {
 
                                 {/* Method */}
                                 <div><MethodBadge method={row.method} /></div>
+
+                                {/* Hits */}
+                                <span className="font-mono text-xs font-bold text-zinc-300 tabular-nums">
+                                    {row.totalHits?.toLocaleString()}
+                                </span>
 
                                 {/* Avg Latency */}
                                 <LatencyCell value={row.avgLatency} />
