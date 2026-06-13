@@ -89,4 +89,14 @@ export class ClientController {
             next(error);
         }
     }
-}
+
+    async deleteApiKey(req, res, next) {
+        try {
+            const { clientId, keyId } = req.params;
+            const result = await this.clientService.deleteApiKey(clientId, keyId, req.user);
+            return res.status(200).json(ResponseFormatter.success(result, 'API key deleted successfully', 200));
+        } catch (error) {
+            next(error);
+        }
+    }
+}

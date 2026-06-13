@@ -241,4 +241,28 @@ export class ClientService {
             throw error;
         }
     }
-}
+
+    async deleteApiKey(clientId, keyId, user) {
+        try {
+            if (!this.canUserAccessClient(user, clientId)) {
+                throw new AppError('Access denied to this client', 403);
+            }
+
+            if (!(user.role === APPLICATION_ROLES.SUPER_ADMIN || user.role === APPLICATION_ROLES.CLIENT_ADMIN)) {
+                throw new AppError('Access denied - Only Super Admin and Client Admin can delete API keys', 403);
+            }
+
+            const deleted = await this.apiKeyRepository.deleteById(keyId, clientId);
+
+            if (!deleted) {
+                throw new AppError('API key not found', 404);
+            }
+
+            logger.info('API key deleted', { keyId, clientId, deletedBy: user.userId });
+            return { keyId };
+        } catch (error) {
+            logger.error('Error deleting API key:', error);
+            throw error;
+        }
+    }
+}

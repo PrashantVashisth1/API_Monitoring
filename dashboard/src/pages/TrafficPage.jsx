@@ -24,11 +24,11 @@ const REFRESH_INTERVAL = 10_000; // 10 seconds
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const METHOD_STYLES = {
-    GET:     'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    POST:    'bg-sky-500/10 text-sky-400 border-sky-500/20',
-    PUT:     'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    PATCH:   'bg-violet-500/10 text-violet-400 border-violet-500/20',
-    DELETE:  'bg-red-500/10 text-red-400 border-red-500/20',
+    GET: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    POST: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    PUT: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    PATCH: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    DELETE: 'bg-red-500/10 text-red-400 border-red-500/20',
     default: 'bg-zinc-800 text-zinc-400 border-zinc-700',
 };
 
@@ -43,9 +43,9 @@ function MethodBadge({ method }) {
 
 function LatencyBar({ value }) {
     const ms = parseFloat(value);
-    const color = ms < 100  ? 'bg-emerald-500'
-                : ms < 500  ? 'bg-amber-500'
-                : 'bg-red-500';
+    const color = ms < 100 ? 'bg-emerald-500'
+        : ms < 500 ? 'bg-amber-500'
+            : 'bg-red-500';
     // max bar = 1000ms → 100%
     const width = Math.min((ms / 1000) * 100, 100);
 
@@ -57,9 +57,8 @@ function LatencyBar({ value }) {
                     style={{ width: `${width}%` }}
                 />
             </div>
-            <span className={`text-xs font-mono font-semibold ${
-                ms < 100 ? 'text-emerald-400' : ms < 500 ? 'text-amber-400' : 'text-red-400'
-            }`}>
+            <span className={`text-xs font-mono font-semibold ${ms < 100 ? 'text-emerald-400' : ms < 500 ? 'text-amber-400' : 'text-red-400'
+                }`}>
                 {ms.toFixed(0)}ms
             </span>
         </div>
@@ -170,7 +169,7 @@ function TrafficRow({ hit, isNew }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function TrafficPage() {
-    const { user }    = useAuth();
+    const { user } = useAuth();
     const isGuest = user?.isGuest === true;
     const [tick, setTick] = useState(0);          // countdown display
     const [newIds, setNewIds] = useState(new Set()); // highlight new rows
@@ -190,7 +189,7 @@ export function TrafficPage() {
     // ── Data fetch (real users) ─────────────────────────────────────────────
     const { data: realData, isLoading, isError, refetch, isFetching } = useQuery({
         queryKey: ['live-traffic', user?.clientId],
-        queryFn:  () => analyticsApi.getDashboard(),
+        queryFn: () => analyticsApi.getDashboard(),
         refetchInterval: REFRESH_INTERVAL,
         // Read recentTraffic (per-endpoint rows) — NOT recentActivity (aggregated chart data)
         select: (res) => res?.data?.recentTraffic ?? [],
@@ -207,7 +206,7 @@ export function TrafficPage() {
             return;
         }
         const prevKeys = new Set(prevDataRef.current.map(h => `${h.serviceName}:${h.endpoint}:${h.timeBucket}`));
-        const newKeys  = new Set();
+        const newKeys = new Set();
         hits.forEach(h => {
             const key = `${h.serviceName}:${h.endpoint}:${h.timeBucket}`;
             if (!prevKeys.has(key)) newKeys.add(key);
@@ -220,15 +219,17 @@ export function TrafficPage() {
     }, [hits]);
 
     // ── Stats from activity ───────────────────────────────────────────────────
-    const totalHits  = hits.reduce((s, h) => s + (h.totalHits  || 0), 0);
-    const totalErrors= hits.reduce((s, h) => s + (h.errorHits  || 0), 0);
-    const avgLatency = hits.length
-        ? (hits.reduce((s, h) => s + parseFloat(h.avgLatency || 0), 0) / hits.length).toFixed(0)
+    const totalHits = hits.reduce((s, h) => s + (h.totalHits || 0), 0);
+    const totalErrors = hits.reduce((s, h) => s + (h.errorHits || 0), 0);
+    const avgLatency = totalHits > 0
+        ? (hits.reduce((s, h) => s + (parseFloat(h.avgLatency || 0) * (h.totalHits || 0)), 0) / totalHits).toFixed(0)
         : 0;
-    const services   = new Set(hits.map(h => h.serviceName)).size;
+    const services = new Set(hits.map(h => h.serviceName)).size;
 
     const handleRefresh = () => {
-        refetch();
+        if (!isGuest) {
+            refetch();
+        }
         setTick(REFRESH_INTERVAL / 1000);
     };
 
@@ -277,26 +278,26 @@ export function TrafficPage() {
                     {
                         label: 'Total Hits',
                         value: isLoading ? '—' : totalHits.toLocaleString(),
-                        icon:  Activity,
-                        cls:   'text-orange-400',
+                        icon: Activity,
+                        cls: 'text-orange-400',
                     },
                     {
                         label: 'Avg Latency',
                         value: isLoading ? '—' : `${avgLatency}ms`,
-                        icon:  Zap,
-                        cls:   Number(avgLatency) < 100 ? 'text-emerald-400' : Number(avgLatency) < 500 ? 'text-amber-400' : 'text-red-400',
+                        icon: Zap,
+                        cls: Number(avgLatency) < 100 ? 'text-emerald-400' : Number(avgLatency) < 500 ? 'text-amber-400' : 'text-red-400',
                     },
                     {
                         label: 'Errors',
                         value: isLoading ? '—' : totalErrors.toLocaleString(),
-                        icon:  AlertTriangle,
-                        cls:   totalErrors > 0 ? 'text-red-400' : 'text-zinc-700',
+                        icon: AlertTriangle,
+                        cls: totalErrors > 0 ? 'text-red-400' : 'text-zinc-700',
                     },
                     {
                         label: 'Services',
                         value: isLoading ? '—' : services,
-                        icon:  Wifi,
-                        cls:   'text-sky-400',
+                        icon: Wifi,
+                        cls: 'text-sky-400',
                     },
                 ].map(({ label, value, icon: Icon, cls }) => (
                     <div key={label} className="p-4 bg-[#111111] border border-zinc-800/60 rounded-xl">
@@ -357,8 +358,8 @@ export function TrafficPage() {
                     <p className="text-[9px] text-zinc-700 uppercase tracking-widest">Latency legend</p>
                     {[
                         { color: 'bg-emerald-500', label: '< 100ms — Fast' },
-                        { color: 'bg-amber-500',   label: '100–500ms — Moderate' },
-                        { color: 'bg-red-500',     label: '> 500ms — Slow' },
+                        { color: 'bg-amber-500', label: '100–500ms — Moderate' },
+                        { color: 'bg-red-500', label: '> 500ms — Slow' },
                     ].map(({ color, label }) => (
                         <div key={label} className="flex items-center gap-1.5">
                             <div className={`w-2 h-2 rounded-full ${color}`} />

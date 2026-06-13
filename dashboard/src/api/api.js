@@ -203,6 +203,16 @@ export const clientApi = {
         const response = await api.get(`/admin/clients/${clientId}/api/keys`); // ← was /api-keys
         return response.data;
     },
+
+    /**
+     * Delete an API key by its keyId (UUID, not Mongo _id).
+     * Only client_admin and super_admin can delete.
+     * DELETE /api/admin/clients/:clientId/api/keys/:keyId
+     */
+    deleteApiKey: async (clientId, keyId) => {
+        const response = await api.delete(`/admin/clients/${clientId}/api/keys/${keyId}`);
+        return response.data;
+    },
     /**
      * List all client organisations (super_admin only).
      * Used by Team Management page to populate the client dropdown.

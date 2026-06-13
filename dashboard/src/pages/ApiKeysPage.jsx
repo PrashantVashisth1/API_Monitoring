@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Key, Plus, Copy, Check, AlertTriangle, Loader2,
     ShieldCheck, Clock, Globe, Code2, RefreshCw, Eye, EyeOff,
-    CheckCircle2, XCircle, Lock, ArrowRight,
+    CheckCircle2, XCircle, Lock, ArrowRight, Trash2,
 } from 'lucide-react';
 import { clientApi } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -280,14 +280,14 @@ function GenerateModal({ clientId, actingUser, onGenerated, onClose }) {
 }
 
 // ─── Key Row ──────────────────────────────────────────────────────────────────
-function KeyRow({ apiKey }) {
-    const env = ENV_STYLES[apiKey.environment] ?? ENV_STYLES.production;
-    const days = daysUntil(apiKey.expiresAt);
+function KeyRow({ apiKey, canDelete, onDelete, isDeleting }) {
+    const env     = ENV_STYLES[apiKey.environment] ?? ENV_STYLES.production;
+    const days    = daysUntil(apiKey.expiresAt);
     const expired = days <= 0;
     const warning = days > 0 && days <= 30;
 
     return (
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-4 items-center px-5 py-4 hover:bg-zinc-800/20 transition-colors border-b border-zinc-800/40 last:border-0">
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-4 hover:bg-zinc-800/20 transition-colors border-b border-zinc-800/40 last:border-0">
             {/* Icon */}
             <div className={[
                 'w-8 h-8 rounded-xl flex items-center justify-center border flex-shrink-0',
@@ -350,6 +350,20 @@ function KeyRow({ apiKey }) {
                     : <XCircle className="w-4 h-4 text-zinc-700" />
                 }
             </div>
+
+            {/* Delete button — only shown to admins */}
+            {canDelete && (
+                <button
+                    onClick={() => onDelete(apiKey.keyId, apiKey.name)}
+                    disabled={isDeleting}
+                    title="Delete key"
+                    className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-zinc-700 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-150 disabled:opacity-40"
+                >
+                    {isDeleting
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
+            )}
         </div>
     );
 }
@@ -431,6 +445,27 @@ export function ApiKeysPage() {
         setNewKeyData(keyData);
         queryClient.invalidateQueries({ queryKey: ['api-keys', clientId] });
     }, [clientId, queryClient]);
+
+    // ── Delete key ────────────────────────────────────────────────────────────────
+    const [deletingKeyId, setDeletingKeyId] = useState(null);
+    const canDelete = canGenerate; // same role gate: client_admin + super_admin
+
+    const deleteMutation = useMutation({
+        mutationFn: ({ keyId }) => clientApi.deleteApiKey(clientId, keyId),
+        onSuccess: (_, { keyId }) => {
+            queryClient.invalidateQueries({ queryKey: ['api-keys', clientId] });
+            setDeletingKeyId(null);
+        },
+        onError: () => {
+            setDeletingKeyId(null);
+        },
+    });
+
+    const handleDelete = useCallback((keyId, name) => {
+        if (!window.confirm(`Delete key “${name}”?\n\nThis is permanent and cannot be undone. Any services using this key will stop being monitored.`)) return;
+        setDeletingKeyId(keyId);
+        deleteMutation.mutate({ keyId });
+    }, [deleteMutation]);
 
     // ── Stats ─────────────────────────────────────────────────────────────────
     const activeCount = keys.filter(k => k.isActive && daysUntil(k.expiresAt) > 0).length;
@@ -556,7 +591,15 @@ export function ApiKeysPage() {
                             )}
                         </div>
                     ) : (
-                        keys.map((key) => <KeyRow key={key._id} apiKey={key} />)
+                        keys.map((key) => (
+                            <KeyRow
+                                key={key._id}
+                                apiKey={key}
+                                canDelete={canDelete}
+                                onDelete={handleDelete}
+                                isDeleting={deletingKeyId === key.keyId}
+                            />
+                        ))
                     )}
                 </div>
 

@@ -7,11 +7,36 @@ import {
     Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
+// 🔥 SMART FORMATTER: Aaj ka hai toh sirf time, purana hai toh Date + Time
+const formatDateTime = (val) => {
+    if (!val) return '';
+
+    const isoStr = typeof val === 'string' && val.endsWith('Z') ? val : val + 'Z';
+    const d = new Date(isoStr);
+
+    if (isNaN(d.getTime())) return val;
+
+    const today = new Date();
+    const isToday = d.getDate() === today.getDate() &&
+        d.getMonth() === today.getMonth() &&
+        d.getFullYear() === today.getFullYear();
+
+    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    if (isToday) {
+        return timeStr;
+    } else {
+        const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        return `${dateStr}, ${timeStr}`;
+    }
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-[#1a1a1a] border border-zinc-700 rounded-lg px-3 py-2.5 shadow-xl text-xs">
-            <p className="text-zinc-500 font-mono mb-1">{label}</p>
+            {/* 🔥 Yahan label format hoga */}
+            <p className="text-zinc-500 font-mono mb-1">{formatDateTime(label)}</p>
             <p className="text-zinc-100 font-bold text-sm tabular-nums">
                 {payload[0]?.value}ms
             </p>
@@ -34,7 +59,7 @@ export function LatencyLineChart({ data }) {
                         Latency Trend
                     </p>
                     <p className="text-sm font-semibold text-zinc-200">
-                        Average Response Time (24h)
+                        Average Response Time
                     </p>
                 </div>
                 {!isEmpty && (
@@ -59,7 +84,8 @@ export function LatencyLineChart({ data }) {
                             tickLine={false}
                             tick={{ fill: '#52525b', fontSize: 10 }}
                             dy={8}
-                            interval={3}
+                            interval="preserveStartEnd"
+                            tickFormatter={formatDateTime} // 🔥 X-Axis par format
                         />
                         <YAxis
                             axisLine={false}
