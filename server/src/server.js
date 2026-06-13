@@ -17,6 +17,9 @@ import ingestRouter   from "./services/ingest/routes/ingestRoutes.js";
 import analyticsRouter from "./services/analytics/routes/analyticsRoutes.js";
 import leadRouter     from "./services/leads/routes/leadRoutes.js";
 
+// Background Workers
+import "./services/processor/consumer.js";
+
 /**
  * Initialize Express app
  */
