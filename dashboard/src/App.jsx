@@ -149,7 +149,7 @@ function AuthGate() {
 
     if (!isAuthenticated) {
         if (location.pathname !== '/login') {
-            return <Navigate to="/login" replace />;
+            return <Navigate to="/" replace />;
         }
         return <Login />;
     }

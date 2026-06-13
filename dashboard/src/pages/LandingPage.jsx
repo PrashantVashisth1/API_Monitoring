@@ -1,16 +1,598 @@
+// /**
+//  * LandingPage.jsx — Pulse API Public Homepage
+//  * Route: / (always public, no auth required)
+//  *
+//  * Premium redesign with animated hero, live metrics ticker, features, and CTA.
+//  * If already authenticated, redirects to /dashboard (handled by InitializationGate).
+//  */
+// import { useState, useEffect, useRef } from 'react';
+// import { useNavigate } from 'react-router-dom';
+// import {
+//     Zap, ArrowRight, Key, Building2, BarChart2,
+//     CheckCircle2, Loader2, Shield, Clock, Activity,
+//     ChevronRight, Globe,
+// } from 'lucide-react';
+// import { Modal } from '../components/ui/Modal';
+// import { useToast } from '../contexts/ToastContext';
+// import { useAuth } from '../contexts/AuthContext';
+// import { leadsApi } from '../api/api';
+
+// // ─── Animated counter hook ────────────────────────────────────────────────────
+// function useCounter(target, duration = 2000, enabled = true) {
+//     const [value, setValue] = useState(0);
+//     useEffect(() => {
+//         if (!enabled) return;
+//         const start = performance.now();
+//         const tick = (now) => {
+//             const elapsed = now - start;
+//             const progress = Math.min(elapsed / duration, 1);
+//             // Ease out cubic
+//             const eased = 1 - Math.pow(1 - progress, 3);
+//             setValue(Math.round(eased * target));
+//             if (progress < 1) requestAnimationFrame(tick);
+//         };
+//         requestAnimationFrame(tick);
+//     }, [target, duration, enabled]);
+//     return value;
+// }
+
+// // ─── Code block lines ────────────────────────────────────────────────────────
+// const CODE_LINES = [
+//     { n: '01', tokens: [{ t: 'const', c: '#569cd6' }, { t: ' monitorMiddleware', c: '#9cdcfe' }, { t: ' = require(', c: '#d4d4d4' }, { t: "'./middleware/apim'", c: '#ce9178' }, { t: ');', c: '#d4d4d4' }] },
+//     { n: '02', tokens: [] },
+//     { n: '03', tokens: [{ t: '// One middleware. Complete visibility.', c: '#6a9955' }] },
+//     { n: '04', tokens: [{ t: 'app', c: '#9cdcfe' }, { t: '.use(monitorMiddleware({', c: '#d4d4d4' }] },
+//     { n: '05', tokens: [{ t: '  apiKey', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: 'process.env.MONITORING_API_KEY', c: '#dcdcaa' }, { t: ',', c: '#d4d4d4' }] },
+//     { n: '06', tokens: [{ t: '  serviceName', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: "'payments-api'", c: '#ce9178' }, { t: ',', c: '#d4d4d4' }] },
+//     { n: '07', tokens: [{ t: '  environment', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: "'production'", c: '#ce9178' }, { t: ',', c: '#d4d4d4' }] },
+//     { n: '08', tokens: [{ t: '}));', c: '#d4d4d4' }] },
+//     { n: '09', tokens: [] },
+//     { n: '10', tokens: [{ t: '// ✓ Latency tracked', c: '#6a9955' }] },
+//     { n: '11', tokens: [{ t: '// ✓ Error rates monitored', c: '#6a9955' }] },
+//     { n: '12', tokens: [{ t: '// ✓ Dashboard live in seconds', c: '#6a9955' }] },
+// ];
+
+// // ─── How it works steps ──────────────────────────────────────────────────────
+// const HOW_IT_WORKS = [
+//     {
+//         step: '01',
+//         title: 'Get Your API Key',
+//         desc: 'Request access, get onboarded, and generate an API key from your Pulse API dashboard in seconds.',
+//         code: 'Dashboard → API Keys → Generate',
+//     },
+//     {
+//         step: '02',
+//         title: 'Add the Middleware',
+//         desc: 'Drop a single self-contained middleware file into your Express app. No npm package, no agents, no YAML.',
+//         code: 'app.use(monitorMiddleware({ apiKey }));',
+//     },
+//     {
+//         step: '03',
+//         title: 'Analyse & Act',
+//         desc: 'See latency trends, error rates, top endpoints, and multi-service health — all in one unified dashboard.',
+//         code: '→ Dashboard → Live Traffic → Archive',
+//     },
+// ];
+
+// // ─── Feature cards ────────────────────────────────────────────────────────────
+// const FEATURES = [
+//     {
+//         icon: Zap,
+//         gradient: 'from-amber-500/20 to-orange-500/5',
+//         border: 'border-amber-500/20',
+//         iconColor: 'text-amber-400',
+//         headline: 'Zero-Config Integration',
+//         body: 'One middleware, complete request coverage. Latency, status codes, and service names captured automatically — no code changes needed on individual routes.',
+//         tags: ['Express', 'Fastify', 'Koa'],
+//     },
+//     {
+//         icon: BarChart2,
+//         gradient: 'from-sky-500/20 to-blue-500/5',
+//         border: 'border-sky-500/20',
+//         iconColor: 'text-sky-400',
+//         headline: 'Real-Time Telemetry',
+//         body: 'Live traffic explorer refreshes every 10 seconds. Latency trend charts, error rate breakdown, and per-endpoint analytics updated continuously.',
+//         tags: ['Live Traffic', 'Latency Trends', 'Error Rates'],
+//     },
+//     {
+//         icon: Key,
+//         gradient: 'from-violet-500/20 to-purple-500/5',
+//         border: 'border-violet-500/20',
+//         iconColor: 'text-violet-400',
+//         headline: 'Per-Environment Keys',
+//         body: 'Generate isolated API keys for production, staging, development, and testing. Revoke compromised keys instantly from the dashboard.',
+//         tags: ['Production', 'Staging', 'Testing'],
+//     },
+//     {
+//         icon: Building2,
+//         gradient: 'from-emerald-500/20 to-green-500/5',
+//         border: 'border-emerald-500/20',
+//         iconColor: 'text-emerald-400',
+//         headline: 'Multi-Tenant by Design',
+//         body: 'Onboard multiple organisations under one deployment. Complete data isolation per client, role-based access, and dedicated dashboards for every team.',
+//         tags: ['Super Admin', 'Client Admin', 'Viewer'],
+//     },
+//     {
+//         icon: Clock,
+//         gradient: 'from-rose-500/20 to-red-500/5',
+//         border: 'border-rose-500/20',
+//         iconColor: 'text-rose-400',
+//         headline: 'Historical Archive',
+//         body: 'Query up to 30 days of API metrics. Filter by service, endpoint, time range. Identify patterns, spot regressions, and debug production incidents.',
+//         tags: ['Date Range', 'Filters', '30-Day History'],
+//     },
+//     {
+//         icon: Shield,
+//         gradient: 'from-zinc-500/20 to-zinc-700/5',
+//         border: 'border-zinc-600/20',
+//         iconColor: 'text-zinc-400',
+//         headline: 'Your Infrastructure',
+//         body: 'Self-hosted with PostgreSQL + MongoDB. No vendor lock-in, no data leaving your servers. Full control over retention and access.',
+//         tags: ['PostgreSQL', 'MongoDB', 'Self-Hosted'],
+//     },
+// ];
+
+// // ─── Sub-components ──────────────────────────────────────────────────────────
+// function FeatureCard({ icon: Icon, gradient, border, iconColor, headline, body, tags }) {
+//     return (
+//         <div className={`relative bg-gradient-to-br ${gradient} border ${border} rounded-2xl p-6 hover:-translate-y-1 transition-all duration-300 group overflow-hidden`}>
+//             {/* Glow effect on hover */}
+//             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-br from-white/[0.02] to-transparent" />
+
+//             <div className={`w-9 h-9 rounded-xl bg-zinc-900/80 border ${border} flex items-center justify-center mb-4`}>
+//                 <Icon className={`w-4 h-4 ${iconColor}`} />
+//             </div>
+
+//             <h3 className="text-[15px] font-bold text-zinc-100 mb-2 tracking-tight">{headline}</h3>
+//             <p className="text-sm text-zinc-500 leading-relaxed mb-4">{body}</p>
+
+//             <div className="flex flex-wrap gap-1.5">
+//                 {tags.map((tag) => (
+//                     <span key={tag} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${border} ${iconColor} bg-zinc-950/60 uppercase tracking-wider`}>
+//                         {tag}
+//                     </span>
+//                 ))}
+//             </div>
+//         </div>
+//     );
+// }
+
+// function TerminalMockup() {
+//     return (
+//         <div className="w-full rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-black/80">
+//             {/* Window chrome */}
+//             <div className="flex items-center gap-3 px-4 py-3 bg-[#161616] border-b border-zinc-800">
+//                 <div className="flex gap-1.5">
+//                     <div className="w-3 h-3 rounded-full bg-[#ff5f57]/80" />
+//                     <div className="w-3 h-3 rounded-full bg-[#febc2e]/80" />
+//                     <div className="w-3 h-3 rounded-full bg-[#28c840]/80" />
+//                 </div>
+//                 <div className="flex-1 flex justify-center">
+//                     <div className="flex items-center gap-2 px-3 py-1 rounded bg-zinc-900/60 border border-zinc-700/40">
+//                         <span className="text-[11px] text-zinc-500 font-mono">pulse-middleware.js</span>
+//                     </div>
+//                 </div>
+//                 <span className="text-[9px] font-bold text-orange-400 font-mono px-1.5 py-0.5 border border-orange-500/30 rounded bg-orange-500/10 uppercase tracking-widest">
+//                     JS
+//                 </span>
+//             </div>
+
+//             {/* Code body */}
+//             <div className="bg-[#1a1a1a] px-5 py-5 font-mono text-[12.5px] leading-[1.75]">
+//                 {CODE_LINES.map(({ n, tokens }) => (
+//                     <div key={n} className="flex gap-5 group hover:bg-white/[0.02] -mx-5 px-5 rounded">
+//                         <span className="select-none text-zinc-700 w-4 text-right flex-shrink-0 tabular-nums group-hover:text-zinc-600">
+//                             {n}
+//                         </span>
+//                         <span>
+//                             {tokens.map(({ t, c }, i) => (
+//                                 <span key={i} style={{ color: c }}>{t}</span>
+//                             ))}
+//                         </span>
+//                     </div>
+//                 ))}
+//             </div>
+
+//             {/* Status bar */}
+//             <div className="flex items-center justify-between px-5 py-2 bg-[#0e4429] border-t border-emerald-900/50">
+//                 <div className="flex items-center gap-2">
+//                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+//                     <span className="text-[10px] font-medium text-emerald-400 font-mono">Pulse connected • 0ms overhead</span>
+//                 </div>
+//                 <span className="text-[10px] text-emerald-600 font-mono">v1.0.0</span>
+//             </div>
+//         </div>
+//     );
+// }
+
+// // ─── Request Access Modal ─────────────────────────────────────────────────────
+// function RequestAccessModal({ isOpen, onClose }) {
+//     const addToast = useToast();
+//     const [form, setForm] = useState({ name: '', email: '', company: '', useCase: '' });
+//     const [loading, setLoading] = useState(false);
+
+//     useEffect(() => {
+//         if (!isOpen) {
+//             setForm({ name: '', email: '', company: '', useCase: '' });
+//         }
+//     }, [isOpen]);
+
+//     const handleSubmit = async (e) => {
+//         e.preventDefault();
+//         setLoading(true);
+//         try {
+//             await leadsApi.submitLead(form);
+//             addToast("Success! Our team will review your request and contact you within 24 hours.", 'success');
+//             onClose();
+//         } catch (error) {
+//             const errorMessage = error?.response?.data?.message || 'Something went wrong. Please try again.';
+//             addToast(errorMessage, 'error');
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     const field = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
+
+//     return (
+//         <Modal isOpen={isOpen} onClose={onClose} title="Request Access">
+//             <form onSubmit={handleSubmit} className="space-y-4">
+//                 {[
+//                     { label: 'Full Name', key: 'name', type: 'text', placeholder: 'Your Name' },
+//                     { label: 'Work Email', key: 'email', type: 'email', placeholder: 'you@company.com' },
+//                     { label: 'Company', key: 'company', type: 'text', placeholder: 'Acme Corp' },
+//                 ].map(({ label, key, type, placeholder }) => (
+//                     <div key={key} className="space-y-1.5">
+//                         <label className="block text-xs font-medium text-zinc-400">{label}</label>
+//                         <input
+//                             type={type}
+//                             value={form[key]}
+//                             onChange={field(key)}
+//                             placeholder={placeholder}
+//                             required
+//                             className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-orange-500/50 focus:border-orange-500/50 transition-colors"
+//                         />
+//                     </div>
+//                 ))}
+//                 <div className="space-y-1.5">
+//                     <label className="block text-xs font-medium text-zinc-400">Use Case</label>
+//                     <textarea
+//                         value={form.useCase}
+//                         onChange={field('useCase')}
+//                         placeholder="Briefly describe your use case..."
+//                         rows={3}
+//                         className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-orange-500/50 focus:border-orange-500/50 transition-colors resize-none"
+//                     />
+//                 </div>
+//                 <button
+//                     type="submit"
+//                     disabled={loading}
+//                     className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors disabled:opacity-60"
+//                 >
+//                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+//                     {loading ? 'Submitting…' : 'Request Access'}
+//                 </button>
+//             </form>
+//         </Modal>
+//     );
+// }
+
+// // ─── Live Metrics Ticker ──────────────────────────────────────────────────────
+// function MetricsTicker({ visible }) {
+//     const requests = useCounter(124853, 2200, visible);
+//     const services = useCounter(4, 1000, visible);
+//     const latency = useCounter(54, 1500, visible);
+//     const uptime = useCounter(999, 1800, visible);
+
+//     const metrics = [
+//         { label: 'API Requests Tracked', value: requests.toLocaleString(), suffix: '' },
+//         { label: 'Active Services', value: services, suffix: '' },
+//         { label: 'Avg Latency', value: latency, suffix: 'ms' },
+//         { label: 'Uptime', value: `${(uptime / 10).toFixed(1)}`, suffix: '%' },
+//     ];
+
+//     return (
+//         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-800/40 rounded-2xl overflow-hidden border border-zinc-800/60">
+//             {metrics.map(({ label, value, suffix }) => (
+//                 <div key={label} className="bg-[#0d0d0d] px-6 py-5 text-center">
+//                     <p className="text-2xl sm:text-3xl font-black text-zinc-100 tabular-nums tracking-tight">
+//                         {value}<span className="text-orange-500">{suffix}</span>
+//                     </p>
+//                     <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1 font-medium">{label}</p>
+//                 </div>
+//             ))}
+//         </div>
+//     );
+// }
+
+// // ─── Main Landing Page ────────────────────────────────────────────────────────
+// export function LandingPage() {
+//     const navigate = useNavigate();
+//     const { isAuthenticated, loginAsGuest } = useAuth();
+//     const [modalOpen, setModalOpen] = useState(false);
+//     const [heroVisible, setHeroVisible] = useState(false);
+//     const heroRef = useRef(null);
+
+//     useEffect(() => {
+//         const timer = setTimeout(() => setHeroVisible(true), 100);
+//         return () => clearTimeout(timer);
+//     }, []);
+
+//     const handleLoginClick = () => {
+//         navigate(isAuthenticated ? '/dashboard' : '/login');
+//     };
+
+//     const handleLiveDemoClick = () => {
+//         if (!isAuthenticated) loginAsGuest();
+//         navigate('/dashboard');
+//     };
+
+//     return (
+//         <div className="min-h-screen bg-[#080808] text-zinc-100 antialiased">
+
+//             {/* ── Navbar ──────────────────────────────────────────────── */}
+//             <header className="sticky top-0 z-40 border-b border-zinc-800/40 bg-[#080808]/90 backdrop-blur-md">
+//                 <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+//                     {/* Brand */}
+//                     <div className="flex items-center gap-2.5">
+//                         <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+//                             <Zap className="w-3.5 h-3.5 text-orange-400" />
+//                         </div>
+//                         <span className="text-sm font-bold text-zinc-100 tracking-tight">Pulse API</span>
+//                     </div>
+
+//                     {/* Nav actions */}
+//                     <nav className="flex items-center gap-3">
+//                         <button
+//                             onClick={handleLoginClick}
+//                             className="text-sm font-medium text-zinc-500 hover:text-zinc-200 transition-colors"
+//                         >
+//                             {isAuthenticated ? 'Go to Dashboard →' : 'Sign In'}
+//                         </button>
+//                         <button
+//                             onClick={() => setModalOpen(true)}
+//                             className="text-sm font-semibold bg-orange-500 hover:bg-orange-400 text-white px-4 py-1.5 rounded-lg transition-colors"
+//                         >
+//                             Request Access
+//                         </button>
+//                     </nav>
+//                 </div>
+//             </header>
+
+//             <main>
+//                 {/* ── Hero ─────────────────────────────────────────────── */}
+//                 <section className="relative overflow-hidden">
+//                     {/* Background gradient orbs */}
+//                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
+//                         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-orange-500/5 rounded-full blur-[120px]" />
+//                         <div className="absolute top-1/4 -left-32 w-[400px] h-[400px] bg-violet-500/5 rounded-full blur-[100px]" />
+//                         <div className="absolute top-1/4 -right-32 w-[400px] h-[400px] bg-sky-500/5 rounded-full blur-[100px]" />
+//                     </div>
+
+//                     <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-16 lg:pt-28 lg:pb-24">
+//                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+//                             {/* Left: copy */}
+//                             <div className={`transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+//                                 {/* Badge */}
+//                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-orange-500/20 bg-orange-500/5 mb-6">
+//                                     <span className="relative flex h-1.5 w-1.5">
+//                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+//                                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-500" />
+//                                     </span>
+//                                     <span className="text-[11px] font-semibold text-orange-400 uppercase tracking-widest">
+//                                         Now in production
+//                                     </span>
+//                                 </div>
+
+//                                 {/* Headline */}
+//                                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.05] mb-6">
+//                                     <span className="text-zinc-100">Real-time</span>
+//                                     <br />
+//                                     <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">
+//                                         API Intelligence
+//                                     </span>
+//                                     <br />
+//                                     <span className="text-zinc-500">for your stack.</span>
+//                                 </h1>
+
+//                                 <p className="text-base text-zinc-500 leading-relaxed mb-8 max-w-lg">
+//                                     Pulse API captures every request your services handle — latency, errors, throughput — and delivers a live dashboard in seconds. One middleware. Complete visibility.
+//                                 </p>
+
+//                                 {/* Stats */}
+//                                 <div className="flex items-center gap-6 mb-8">
+//                                     {[
+//                                         { icon: CheckCircle2, text: 'Zero config required', color: 'text-emerald-400' },
+//                                         { icon: Shield, text: 'Self-hosted & private', color: 'text-sky-400' },
+//                                     ].map(({ icon: Icon, text, color }) => (
+//                                         <div key={text} className="flex items-center gap-1.5">
+//                                             <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} />
+//                                             <span className="text-xs text-zinc-500">{text}</span>
+//                                         </div>
+//                                     ))}
+//                                 </div>
+
+//                                 {/* CTAs */}
+//                                 <div className="flex flex-wrap gap-3">
+//                                     <button
+//                                         id="cta-request-access"
+//                                         onClick={() => setModalOpen(true)}
+//                                         className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-6 py-3 rounded-xl transition-all duration-150 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30"
+//                                     >
+//                                         Request Access
+//                                         <ArrowRight className="w-4 h-4" />
+//                                     </button>
+//                                     <button
+//                                         id="cta-live-demo"
+//                                         onClick={handleLiveDemoClick}
+//                                         className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 bg-zinc-900/60 hover:bg-zinc-800/60 text-zinc-300 hover:text-zinc-100 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-150"
+//                                     >
+//                                         <Activity className="w-4 h-4" />
+//                                         View Live Demo
+//                                     </button>
+//                                 </div>
+//                             </div>
+
+//                             {/* Right: terminal */}
+//                             <div className={`transition-all duration-700 delay-200 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+//                                 <TerminalMockup />
+//                             </div>
+//                         </div>
+
+//                         {/* Metrics ticker */}
+//                         <div className={`mt-14 transition-all duration-700 delay-300 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+//                             <MetricsTicker visible={heroVisible} />
+//                         </div>
+//                     </div>
+//                 </section>
+
+//                 {/* ── How it works ──────────────────────────────────────── */}
+//                 <section className="border-t border-zinc-800/40">
+//                     <div className="max-w-7xl mx-auto px-6 py-20">
+//                         <div className="mb-12 text-center">
+//                             <p className="text-[11px] font-semibold text-orange-500 uppercase tracking-widest mb-3">
+//                                 Getting Started
+//                             </p>
+//                             <h2 className="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">
+//                                 Up and running in 3 steps
+//                             </h2>
+//                             <p className="text-sm text-zinc-600 mt-2 max-w-md mx-auto">
+//                                 From zero to a live dashboard. No YAML, no agents, no nonsense.
+//                             </p>
+//                         </div>
+
+//                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//                             {HOW_IT_WORKS.map((step, i) => (
+//                                 <div key={step.step} className="relative group">
+//                                     {/* Connector line */}
+//                                     {i < HOW_IT_WORKS.length - 1 && (
+//                                         <div className="hidden md:block absolute top-8 left-full w-6 h-px bg-zinc-800 z-10" />
+//                                     )}
+
+//                                     <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-6 hover:border-zinc-700/60 transition-colors h-full">
+//                                         <div className="flex items-center gap-3 mb-4">
+//                                             <span className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[11px] font-black text-orange-500">
+//                                                 {step.step}
+//                                             </span>
+//                                             <h3 className="text-sm font-bold text-zinc-100">{step.title}</h3>
+//                                         </div>
+//                                         <p className="text-sm text-zinc-500 leading-relaxed mb-4">{step.desc}</p>
+//                                         <div className="bg-[#111] border border-zinc-800/60 rounded-lg px-3 py-2 font-mono text-[11px] text-zinc-400">
+//                                             {step.code}
+//                                         </div>
+//                                     </div>
+//                                 </div>
+//                             ))}
+//                         </div>
+//                     </div>
+//                 </section>
+
+//                 {/* ── Features ──────────────────────────────────────────── */}
+//                 <section className="border-t border-zinc-800/40">
+//                     <div className="max-w-7xl mx-auto px-6 py-20">
+//                         <div className="mb-12">
+//                             <p className="text-[11px] font-semibold text-orange-500 uppercase tracking-widest mb-3">
+//                                 Platform Features
+//                             </p>
+//                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+//                                 <h2 className="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight max-w-sm">
+//                                     Everything you need to monitor APIs at scale
+//                                 </h2>
+//                                 <p className="text-sm text-zinc-600 max-w-xs">
+//                                     Production-grade stack. No vendor lock-in. Your data stays on your infrastructure.
+//                                 </p>
+//                             </div>
+//                         </div>
+
+//                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+//                             {FEATURES.map((feature) => (
+//                                 <FeatureCard key={feature.headline} {...feature} />
+//                             ))}
+//                         </div>
+//                     </div>
+//                 </section>
+
+//                 {/* ── CTA section ──────────────────────────────────────── */}
+//                 <section className="border-t border-zinc-800/40">
+//                     <div className="max-w-7xl mx-auto px-6 py-20">
+//                         <div className="relative rounded-3xl overflow-hidden border border-zinc-800/60 bg-gradient-to-br from-zinc-900 to-[#080808] p-12 text-center">
+//                             {/* Glow */}
+//                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-orange-500/10 blur-[60px] pointer-events-none" />
+
+//                             <div className="relative">
+//                                 <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
+//                                     <Zap className="w-6 h-6 text-orange-400" />
+//                                 </div>
+
+//                                 <h2 className="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mb-4">
+//                                     Ready to add <span className="text-orange-400">pulse</span> to your APIs?
+//                                 </h2>
+//                                 <p className="text-zinc-500 text-base max-w-md mx-auto mb-8">
+//                                     Request access or explore the live demo with sample data. Setup takes under 5 minutes.
+//                                 </p>
+//                                 <div className="flex flex-wrap items-center justify-center gap-3">
+//                                     <button
+//                                         onClick={() => setModalOpen(true)}
+//                                         className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-orange-500/20"
+//                                     >
+//                                         Request Access
+//                                         <ArrowRight className="w-4 h-4" />
+//                                     </button>
+//                                     <button
+//                                         onClick={handleLiveDemoClick}
+//                                         className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 text-sm font-semibold px-7 py-3.5 rounded-xl transition-all"
+//                                     >
+//                                         <Activity className="w-4 h-4" />
+//                                         Live Demo
+//                                     </button>
+//                                 </div>
+//                             </div>
+//                         </div>
+//                     </div>
+//                 </section>
+//             </main>
+
+//             {/* ── Footer ───────────────────────────────────────────────── */}
+//             <footer className="border-t border-zinc-800/40">
+//                 <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+//                     <div className="flex items-center gap-2.5">
+//                         <div className="w-5 h-5 rounded-md bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+//                             <Zap className="w-2.5 h-2.5 text-orange-400" />
+//                         </div>
+//                         <span className="text-xs font-semibold text-zinc-600">Pulse API</span>
+//                         <span className="text-xs text-zinc-800">© 2026</span>
+//                     </div>
+//                     <nav className="flex items-center gap-5">
+//                         {['Documentation', 'Status', 'Privacy'].map((label) => (
+//                             <button
+//                                 key={label}
+//                                 className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors"
+//                             >
+//                                 {label}
+//                             </button>
+//                         ))}
+//                     </nav>
+//                 </div>
+//             </footer>
+
+//             <RequestAccessModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+//         </div>
+//     );
+// }
+
+// export default LandingPage;
+
+
 /**
  * LandingPage.jsx — Pulse API Public Homepage
- * Route: / (always public, no auth required)
- *
- * Premium redesign with animated hero, live metrics ticker, features, and CTA.
- * If already authenticated, redirects to /dashboard (handled by InitializationGate).
+ * Premium, minimal, "Linear/Vercel" aesthetic with fixed vertical flow.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Zap, ArrowRight, Key, Building2, BarChart2,
-    CheckCircle2, Loader2, Shield, Clock, Activity,
-    ChevronRight, Globe,
+    Zap, ArrowRight, Key, Building2, Activity,
+    Terminal, Database, Clock, Loader2
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../contexts/ToastContext';
@@ -26,7 +608,6 @@ function useCounter(target, duration = 2000, enabled = true) {
         const tick = (now) => {
             const elapsed = now - start;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease out cubic
             const eased = 1 - Math.pow(1 - progress, 3);
             setValue(Math.round(eased * target));
             if (progress < 1) requestAnimationFrame(tick);
@@ -38,152 +619,84 @@ function useCounter(target, duration = 2000, enabled = true) {
 
 // ─── Code block lines ────────────────────────────────────────────────────────
 const CODE_LINES = [
-    { n: '01', tokens: [{ t: 'const', c: '#569cd6' }, { t: ' monitorMiddleware', c: '#9cdcfe' }, { t: ' = require(', c: '#d4d4d4' }, { t: "'./middleware/apim'", c: '#ce9178' }, { t: ');', c: '#d4d4d4' }] },
-    { n: '02', tokens: [] },
-    { n: '03', tokens: [{ t: '// One middleware. Complete visibility.', c: '#6a9955' }] },
-    { n: '04', tokens: [{ t: 'app', c: '#9cdcfe' }, { t: '.use(monitorMiddleware({', c: '#d4d4d4' }] },
-    { n: '05', tokens: [{ t: '  apiKey', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: 'process.env.MONITORING_API_KEY', c: '#dcdcaa' }, { t: ',', c: '#d4d4d4' }] },
-    { n: '06', tokens: [{ t: '  serviceName', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: "'payments-api'", c: '#ce9178' }, { t: ',', c: '#d4d4d4' }] },
-    { n: '07', tokens: [{ t: '  environment', c: '#9cdcfe' }, { t: ': ', c: '#d4d4d4' }, { t: "'production'", c: '#ce9178' }, { t: ',', c: '#d4d4d4' }] },
-    { n: '08', tokens: [{ t: '}));', c: '#d4d4d4' }] },
-    { n: '09', tokens: [] },
-    { n: '10', tokens: [{ t: '// ✓ Latency tracked', c: '#6a9955' }] },
-    { n: '11', tokens: [{ t: '// ✓ Error rates monitored', c: '#6a9955' }] },
-    { n: '12', tokens: [{ t: '// ✓ Dashboard live in seconds', c: '#6a9955' }] },
+    { n: '1', tokens: [{ t: 'import', c: '#ff7b72' }, { t: ' { monitor } ', c: '#e6edf3' }, { t: 'from', c: '#ff7b72' }, { t: " '@pulse/express'", c: '#a5d6ff' }] },
+    { n: '2', tokens: [] },
+    { n: '3', tokens: [{ t: 'app.', c: '#e6edf3' }, { t: 'use', c: '#d2a8ff' }, { t: '(monitor({', c: '#e6edf3' }] },
+    { n: '4', tokens: [{ t: '  apiKey', c: '#79c0ff' }, { t: ': process.env.', c: '#e6edf3' }, { t: 'PULSE_KEY', c: '#79c0ff' }, { t: ',', c: '#e6edf3' }] },
+    { n: '5', tokens: [{ t: '  service', c: '#79c0ff' }, { t: ": ", c: '#e6edf3' }, { t: "'core-api'", c: '#a5d6ff' }] },
+    { n: '6', tokens: [{ t: '}))', c: '#e6edf3' }] },
 ];
 
-// ─── How it works steps ──────────────────────────────────────────────────────
-const HOW_IT_WORKS = [
-    {
-        step: '01',
-        title: 'Get Your API Key',
-        desc: 'Request access, get onboarded, and generate an API key from your Pulse API dashboard in seconds.',
-        code: 'Dashboard → API Keys → Generate',
-    },
-    {
-        step: '02',
-        title: 'Add the Middleware',
-        desc: 'Drop a single self-contained middleware file into your Express app. No npm package, no agents, no YAML.',
-        code: 'app.use(monitorMiddleware({ apiKey }));',
-    },
-    {
-        step: '03',
-        title: 'Analyse & Act',
-        desc: 'See latency trends, error rates, top endpoints, and multi-service health — all in one unified dashboard.',
-        code: '→ Dashboard → Live Traffic → Archive',
-    },
-];
-
-// ─── Feature cards ────────────────────────────────────────────────────────────
+// ─── Feature cards ───────────────────────────────────────────────────────────
 const FEATURES = [
     {
         icon: Zap,
-        gradient: 'from-amber-500/20 to-orange-500/5',
-        border: 'border-amber-500/20',
-        iconColor: 'text-amber-400',
         headline: 'Zero-Config Integration',
-        body: 'One middleware, complete request coverage. Latency, status codes, and service names captured automatically — no code changes needed on individual routes.',
-        tags: ['Express', 'Fastify', 'Koa'],
+        body: 'Drop in a single middleware. Latency, status codes, and throughput are captured automatically. No route-level changes.',
     },
     {
-        icon: BarChart2,
-        gradient: 'from-sky-500/20 to-blue-500/5',
-        border: 'border-sky-500/20',
-        iconColor: 'text-sky-400',
+        icon: Activity,
         headline: 'Real-Time Telemetry',
-        body: 'Live traffic explorer refreshes every 10 seconds. Latency trend charts, error rate breakdown, and per-endpoint analytics updated continuously.',
-        tags: ['Live Traffic', 'Latency Trends', 'Error Rates'],
+        body: 'Live traffic explorer with sub-second updates. Spot latency spikes and error cascades the moment they happen in production.',
     },
     {
         icon: Key,
-        gradient: 'from-violet-500/20 to-purple-500/5',
-        border: 'border-violet-500/20',
-        iconColor: 'text-violet-400',
-        headline: 'Per-Environment Keys',
-        body: 'Generate isolated API keys for production, staging, development, and testing. Revoke compromised keys instantly from the dashboard.',
-        tags: ['Production', 'Staging', 'Testing'],
+        headline: 'Environment Keys',
+        body: 'Isolated API keys for production, staging, and dev. Roll keys instantly from the dashboard if compromised.',
     },
     {
         icon: Building2,
-        gradient: 'from-emerald-500/20 to-green-500/5',
-        border: 'border-emerald-500/20',
-        iconColor: 'text-emerald-400',
-        headline: 'Multi-Tenant by Design',
-        body: 'Onboard multiple organisations under one deployment. Complete data isolation per client, role-based access, and dedicated dashboards for every team.',
-        tags: ['Super Admin', 'Client Admin', 'Viewer'],
+        headline: 'Multi-Tenant Ready',
+        body: 'Onboard multiple teams or clients. Strict data isolation, role-based RBAC, and dedicated workspaces per tenant.',
     },
     {
         icon: Clock,
-        gradient: 'from-rose-500/20 to-red-500/5',
-        border: 'border-rose-500/20',
-        iconColor: 'text-rose-400',
-        headline: 'Historical Archive',
-        body: 'Query up to 30 days of API metrics. Filter by service, endpoint, time range. Identify patterns, spot regressions, and debug production incidents.',
-        tags: ['Date Range', 'Filters', '30-Day History'],
+        headline: '30-Day Archive',
+        body: 'Query historical metrics. Filter by endpoint, method, or timeframe to debug regressions and generate SLA reports.',
     },
     {
-        icon: Shield,
-        gradient: 'from-zinc-500/20 to-zinc-700/5',
-        border: 'border-zinc-600/20',
-        iconColor: 'text-zinc-400',
+        icon: Database,
         headline: 'Your Infrastructure',
-        body: 'Self-hosted with PostgreSQL + MongoDB. No vendor lock-in, no data leaving your servers. Full control over retention and access.',
-        tags: ['PostgreSQL', 'MongoDB', 'Self-Hosted'],
+        body: 'Self-hosted architecture. Data stays in your Postgres/Mongo clusters. No vendor lock-in, complete privacy.',
     },
 ];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
-function FeatureCard({ icon: Icon, gradient, border, iconColor, headline, body, tags }) {
+function FeatureCard({ icon: Icon, headline, body }) {
     return (
-        <div className={`relative bg-gradient-to-br ${gradient} border ${border} rounded-2xl p-6 hover:-translate-y-1 transition-all duration-300 group overflow-hidden`}>
-            {/* Glow effect on hover */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-br from-white/[0.02] to-transparent" />
-
-            <div className={`w-9 h-9 rounded-xl bg-zinc-900/80 border ${border} flex items-center justify-center mb-4`}>
-                <Icon className={`w-4 h-4 ${iconColor}`} />
+        <div className="group relative bg-[#0a0a0a] border border-zinc-800/80 rounded-xl p-6 transition-all duration-200 hover:bg-[#111111] hover:border-orange-500/30">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-colors">
+                <Icon className="w-5 h-5 text-zinc-400 group-hover:text-orange-400 transition-colors" />
             </div>
-
-            <h3 className="text-[15px] font-bold text-zinc-100 mb-2 tracking-tight">{headline}</h3>
-            <p className="text-sm text-zinc-500 leading-relaxed mb-4">{body}</p>
-
-            <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                    <span key={tag} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${border} ${iconColor} bg-zinc-950/60 uppercase tracking-wider`}>
-                        {tag}
-                    </span>
-                ))}
-            </div>
+            <h3 className="text-[15px] font-semibold text-zinc-100 mb-2 tracking-tight">{headline}</h3>
+            <p className="text-sm text-zinc-500 leading-relaxed">{body}</p>
         </div>
     );
 }
 
 function TerminalMockup() {
     return (
-        <div className="w-full rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-black/80">
+        <div className="w-full rounded-xl overflow-hidden border border-zinc-800 bg-[#0a0a0a] shadow-2xl">
             {/* Window chrome */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-[#161616] border-b border-zinc-800">
-                <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-[#ff5f57]/80" />
-                    <div className="w-3 h-3 rounded-full bg-[#febc2e]/80" />
-                    <div className="w-3 h-3 rounded-full bg-[#28c840]/80" />
+            <div className="flex items-center px-4 py-3 border-b border-zinc-800/80 bg-[#050505]">
+                <div className="flex gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                 </div>
                 <div className="flex-1 flex justify-center">
-                    <div className="flex items-center gap-2 px-3 py-1 rounded bg-zinc-900/60 border border-zinc-700/40">
-                        <span className="text-[11px] text-zinc-500 font-mono">pulse-middleware.js</span>
-                    </div>
+                    <span className="text-[11px] text-zinc-500 font-mono flex items-center gap-2">
+                        <Terminal className="w-3 h-3" /> index.js
+                    </span>
                 </div>
-                <span className="text-[9px] font-bold text-orange-400 font-mono px-1.5 py-0.5 border border-orange-500/30 rounded bg-orange-500/10 uppercase tracking-widest">
-                    JS
-                </span>
+                <div className="w-10" />
             </div>
 
-            {/* Code body */}
-            <div className="bg-[#1a1a1a] px-5 py-5 font-mono text-[12.5px] leading-[1.75]">
+            {/* Code body - Compacted padding to save vertical space */}
+            <div className="px-5 py-5 font-mono text-[12px] sm:text-[13px] leading-[1.7] bg-[#0a0a0a]">
                 {CODE_LINES.map(({ n, tokens }) => (
-                    <div key={n} className="flex gap-5 group hover:bg-white/[0.02] -mx-5 px-5 rounded">
-                        <span className="select-none text-zinc-700 w-4 text-right flex-shrink-0 tabular-nums group-hover:text-zinc-600">
-                            {n}
-                        </span>
+                    <div key={n} className="flex gap-4 sm:gap-6 hover:bg-white/[0.02] -mx-5 px-5">
+                        <span className="select-none text-zinc-700 w-4 text-right flex-shrink-0">{n}</span>
                         <span>
                             {tokens.map(({ t, c }, i) => (
                                 <span key={i} style={{ color: c }}>{t}</span>
@@ -194,12 +707,15 @@ function TerminalMockup() {
             </div>
 
             {/* Status bar */}
-            <div className="flex items-center justify-between px-5 py-2 bg-[#0e4429] border-t border-emerald-900/50">
+            <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800/80 bg-[#050505]">
                 <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[10px] font-medium text-emerald-400 font-mono">Pulse connected • 0ms overhead</span>
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-50" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Tracking Active</span>
                 </div>
-                <span className="text-[10px] text-emerald-600 font-mono">v1.0.0</span>
+                <span className="text-[10px] text-zinc-600 font-mono">0ms overhead</span>
             </div>
         </div>
     );
@@ -212,9 +728,7 @@ function RequestAccessModal({ isOpen, onClose }) {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (!isOpen) {
-            setForm({ name: '', email: '', company: '', useCase: '' });
-        }
+        if (!isOpen) setForm({ name: '', email: '', company: '', useCase: '' });
     }, [isOpen]);
 
     const handleSubmit = async (e) => {
@@ -222,11 +736,10 @@ function RequestAccessModal({ isOpen, onClose }) {
         setLoading(true);
         try {
             await leadsApi.submitLead(form);
-            addToast("Success! Our team will review your request and contact you within 24 hours.", 'success');
+            addToast("Success! Our team will review your request.", 'success');
             onClose();
         } catch (error) {
-            const errorMessage = error?.response?.data?.message || 'Something went wrong. Please try again.';
-            addToast(errorMessage, 'error');
+            addToast(error?.response?.data?.message || 'Something went wrong.', 'error');
         } finally {
             setLoading(false);
         }
@@ -236,7 +749,7 @@ function RequestAccessModal({ isOpen, onClose }) {
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Request Access">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 my-4">
                 {[
                     { label: 'Full Name', key: 'name', type: 'text', placeholder: 'Your Name' },
                     { label: 'Work Email', key: 'email', type: 'email', placeholder: 'you@company.com' },
@@ -245,62 +758,56 @@ function RequestAccessModal({ isOpen, onClose }) {
                     <div key={key} className="space-y-1.5">
                         <label className="block text-xs font-medium text-zinc-400">{label}</label>
                         <input
-                            type={type}
-                            value={form[key]}
-                            onChange={field(key)}
-                            placeholder={placeholder}
-                            required
-                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-orange-500/50 focus:border-orange-500/50 transition-colors"
+                            type={type} value={form[key]} onChange={field(key)} placeholder={placeholder} required
+                            className="w-full bg-[#050505] border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-700 focus:outline-none focus:border-orange-500/50 transition-colors"
                         />
                     </div>
                 ))}
-                <div className="space-y-1.5">
-                    <label className="block text-xs font-medium text-zinc-400">Use Case</label>
-                    <textarea
-                        value={form.useCase}
-                        onChange={field('useCase')}
-                        placeholder="Briefly describe your use case..."
-                        rows={3}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-orange-500/50 focus:border-orange-500/50 transition-colors resize-none"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors disabled:opacity-60"
-                >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    {loading ? 'Submitting…' : 'Request Access'}
+                <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-medium text-sm py-2.5 px-4 rounded-lg transition-colors disabled:opacity-60 mt-2">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Request Access'}
                 </button>
             </form>
         </Modal>
     );
 }
 
-// ─── Live Metrics Ticker ──────────────────────────────────────────────────────
+// ─── Live Metrics Ticker (Compact Spacing) ───────────────────────────────────
 function MetricsTicker({ visible }) {
     const requests = useCounter(124853, 2200, visible);
-    const services = useCounter(4, 1000, visible);
     const latency = useCounter(54, 1500, visible);
     const uptime = useCounter(999, 1800, visible);
 
-    const metrics = [
-        { label: 'API Requests Tracked', value: requests.toLocaleString(), suffix: '' },
-        { label: 'Active Services', value: services, suffix: '' },
-        { label: 'Avg Latency', value: latency, suffix: 'ms' },
-        { label: 'Uptime', value: `${(uptime / 10).toFixed(1)}`, suffix: '%' },
-    ];
-
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-800/40 rounded-2xl overflow-hidden border border-zinc-800/60">
-            {metrics.map(({ label, value, suffix }) => (
-                <div key={label} className="bg-[#0d0d0d] px-6 py-5 text-center">
-                    <p className="text-2xl sm:text-3xl font-black text-zinc-100 tabular-nums tracking-tight">
-                        {value}<span className="text-orange-500">{suffix}</span>
+        <div className="w-full mt-10 lg:mt-12 pt-6 lg:pt-8 border-t border-zinc-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">
+                    Live Platform Stats
+                </p>
+            </div>
+
+            <div className="flex flex-row items-center gap-8 sm:gap-16 lg:gap-20 w-full md:w-auto">
+                <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-zinc-100 tabular-nums leading-none mb-1.5">
+                        {requests.toLocaleString()}<span className="text-orange-500 text-lg sm:text-xl ml-0.5">+</span>
                     </p>
-                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1 font-medium">{label}</p>
+                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-wider font-semibold">Reqs Tracked</p>
                 </div>
-            ))}
+                <div className="w-px h-10 bg-zinc-800/80" />
+                <div>
+                    <p className="text-2xl sm:text-3xl font-bold text-zinc-100 tabular-nums leading-none mb-1.5">
+                        {latency}<span className="text-orange-500 text-lg sm:text-xl ml-0.5">ms</span>
+                    </p>
+                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-wider font-semibold">Avg Latency</p>
+                </div>
+                <div className="hidden sm:block w-px h-10 bg-zinc-800/80" />
+                <div className="hidden sm:block">
+                    <p className="text-2xl sm:text-3xl font-bold text-zinc-100 tabular-nums leading-none mb-1.5">
+                        {(uptime / 10).toFixed(1)}<span className="text-orange-500 text-lg sm:text-xl ml-0.5">%</span>
+                    </p>
+                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-wider font-semibold">Uptime</p>
+                </div>
+            </div>
         </div>
     );
 }
@@ -311,201 +818,95 @@ export function LandingPage() {
     const { isAuthenticated, loginAsGuest } = useAuth();
     const [modalOpen, setModalOpen] = useState(false);
     const [heroVisible, setHeroVisible] = useState(false);
-    const heroRef = useRef(null);
 
     useEffect(() => {
         const timer = setTimeout(() => setHeroVisible(true), 100);
         return () => clearTimeout(timer);
     }, []);
 
-    const handleLoginClick = () => {
-        navigate(isAuthenticated ? '/dashboard' : '/login');
-    };
-
+    const handleLoginClick = () => navigate(isAuthenticated ? '/dashboard' : '/login');
     const handleLiveDemoClick = () => {
         if (!isAuthenticated) loginAsGuest();
         navigate('/dashboard');
     };
 
     return (
-        <div className="min-h-screen bg-[#080808] text-zinc-100 antialiased">
+        <div className="min-h-screen bg-[#050505] text-zinc-100 antialiased selection:bg-orange-500/30">
 
             {/* ── Navbar ──────────────────────────────────────────────── */}
-            <header className="sticky top-0 z-40 border-b border-zinc-800/40 bg-[#080808]/90 backdrop-blur-md">
-                <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-                    {/* Brand */}
+            <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-[#050505]/80 backdrop-blur-md">
+                <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
+                        {/* 🔥 Sidebar jaisa premium translucent logo */}
                         <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
-                            <Zap className="w-3.5 h-3.5 text-orange-400" />
+                            <Zap className="w-4 h-4 text-orange-400" />
                         </div>
-                        <span className="text-sm font-bold text-zinc-100 tracking-tight">Pulse API</span>
+                        <span className="text-sm font-semibold text-zinc-100 tracking-tight">Pulse API</span>
                     </div>
-
-                    {/* Nav actions */}
-                    <nav className="flex items-center gap-3">
-                        <button
-                            onClick={handleLoginClick}
-                            className="text-sm font-medium text-zinc-500 hover:text-zinc-200 transition-colors"
-                        >
-                            {isAuthenticated ? 'Go to Dashboard →' : 'Sign In'}
+                    <nav className="flex items-center gap-4">
+                        <button onClick={handleLoginClick} className="text-[13px] font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
+                            {isAuthenticated ? 'Dashboard →' : 'Sign In'}
                         </button>
-                        <button
-                            onClick={() => setModalOpen(true)}
-                            className="text-sm font-semibold bg-orange-500 hover:bg-orange-400 text-white px-4 py-1.5 rounded-lg transition-colors"
-                        >
-                            Request Access
+                        <button onClick={() => setModalOpen(true)} className="text-[13px] font-medium bg-zinc-100 text-black hover:bg-white px-3.5 py-1.5 rounded-md transition-colors">
+                            Get Access
                         </button>
                     </nav>
                 </div>
             </header>
 
             <main>
-                {/* ── Hero ─────────────────────────────────────────────── */}
-                <section className="relative overflow-hidden">
-                    {/* Background gradient orbs */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-orange-500/5 rounded-full blur-[120px]" />
-                        <div className="absolute top-1/4 -left-32 w-[400px] h-[400px] bg-violet-500/5 rounded-full blur-[100px]" />
-                        <div className="absolute top-1/4 -right-32 w-[400px] h-[400px] bg-sky-500/5 rounded-full blur-[100px]" />
-                    </div>
+                {/* ── Hero (Reduced Vertical Spacing) ──────────────────── */}
+                <section className="relative overflow-hidden pt-12 pb-16 lg:pt-20 lg:pb-16">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-orange-500/10 blur-[100px] rounded-full pointer-events-none" />
 
-                    <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-16 lg:pt-28 lg:pb-24">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                    <div className="relative max-w-6xl mx-auto px-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.9fr] gap-10 lg:gap-12 items-center">
 
-                            {/* Left: copy */}
-                            <div className={`transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                                {/* Badge */}
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-orange-500/20 bg-orange-500/5 mb-6">
-                                    <span className="relative flex h-1.5 w-1.5">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-500" />
-                                    </span>
-                                    <span className="text-[11px] font-semibold text-orange-400 uppercase tracking-widest">
-                                        Now in production
-                                    </span>
-                                </div>
-
-                                {/* Headline */}
-                                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.05] mb-6">
-                                    <span className="text-zinc-100">Real-time</span>
-                                    <br />
-                                    <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">
-                                        API Intelligence
-                                    </span>
-                                    <br />
-                                    <span className="text-zinc-500">for your stack.</span>
+                            {/* Left: Copy */}
+                            <div className={`transition-all duration-700 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold tracking-tighter leading-[1.05] mb-5 text-zinc-100">
+                                    API Monitoring, <br className="hidden sm:block" />
+                                    <span className="text-zinc-500">simplified.</span>
                                 </h1>
-
-                                <p className="text-base text-zinc-500 leading-relaxed mb-8 max-w-lg">
-                                    Pulse API captures every request your services handle — latency, errors, throughput — and delivers a live dashboard in seconds. One middleware. Complete visibility.
+                                <p className="text-[15px] sm:text-base text-zinc-400 leading-relaxed mb-6 max-w-md">
+                                    Capture every request, trace latency, and monitor error rates in real-time. Drop in a single middleware and get a production-ready dashboard instantly.
                                 </p>
 
-                                {/* Stats */}
-                                <div className="flex items-center gap-6 mb-8">
-                                    {[
-                                        { icon: CheckCircle2, text: 'Zero config required', color: 'text-emerald-400' },
-                                        { icon: Shield, text: 'Self-hosted & private', color: 'text-sky-400' },
-                                    ].map(({ icon: Icon, text, color }) => (
-                                        <div key={text} className="flex items-center gap-1.5">
-                                            <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} />
-                                            <span className="text-xs text-zinc-500">{text}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* CTAs */}
                                 <div className="flex flex-wrap gap-3">
-                                    <button
-                                        id="cta-request-access"
-                                        onClick={() => setModalOpen(true)}
-                                        className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-6 py-3 rounded-xl transition-all duration-150 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30"
-                                    >
-                                        Request Access
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        id="cta-live-demo"
-                                        onClick={handleLiveDemoClick}
-                                        className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 bg-zinc-900/60 hover:bg-zinc-800/60 text-zinc-300 hover:text-zinc-100 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-150"
-                                    >
-                                        <Activity className="w-4 h-4" />
+                                    <button onClick={handleLiveDemoClick} className="inline-flex items-center justify-center gap-2 bg-zinc-100 hover:bg-white text-black font-medium text-sm px-6 py-2.5 rounded-lg transition-all">
                                         View Live Demo
+                                    </button>
+                                    <button onClick={() => setModalOpen(true)} className="inline-flex items-center justify-center gap-2 border border-zinc-800 hover:border-zinc-700 bg-[#0a0a0a] text-zinc-300 hover:text-white font-medium text-sm px-6 py-2.5 rounded-lg transition-all">
+                                        Request Access
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Right: terminal */}
-                            <div className={`transition-all duration-700 delay-200 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                            {/* Right: Terminal */}
+                            <div className={`transition-all duration-700 delay-150 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                                 <TerminalMockup />
                             </div>
                         </div>
 
-                        {/* Metrics ticker */}
-                        <div className={`mt-14 transition-all duration-700 delay-300 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                        {/* FULL WIDTH TICKER - Margins fixed so it's above the fold */}
+                        <div className={`transition-all duration-700 delay-300 ease-out ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                             <MetricsTicker visible={heroVisible} />
                         </div>
                     </div>
                 </section>
 
-                {/* ── How it works ──────────────────────────────────────── */}
-                <section className="border-t border-zinc-800/40">
-                    <div className="max-w-7xl mx-auto px-6 py-20">
-                        <div className="mb-12 text-center">
-                            <p className="text-[11px] font-semibold text-orange-500 uppercase tracking-widest mb-3">
-                                Getting Started
-                            </p>
-                            <h2 className="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">
-                                Up and running in 3 steps
+                {/* ── Features Grid ─────────────────────────────────────── */}
+                <section className="border-t border-zinc-800/80 bg-[#0a0a0a]">
+                    <div className="max-w-6xl mx-auto px-6 py-20 lg:py-24">
+                        <div className="mb-12 lg:mb-16">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 tracking-tight mb-3">
+                                Everything you need. <span className="text-zinc-500">Nothing you don't.</span>
                             </h2>
-                            <p className="text-sm text-zinc-600 mt-2 max-w-md mx-auto">
-                                From zero to a live dashboard. No YAML, no agents, no nonsense.
+                            <p className="text-zinc-400 text-[15px] max-w-lg">
+                                Built for developers who want enterprise-grade observability without the enterprise-grade setup time.
                             </p>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {HOW_IT_WORKS.map((step, i) => (
-                                <div key={step.step} className="relative group">
-                                    {/* Connector line */}
-                                    {i < HOW_IT_WORKS.length - 1 && (
-                                        <div className="hidden md:block absolute top-8 left-full w-6 h-px bg-zinc-800 z-10" />
-                                    )}
-
-                                    <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-6 hover:border-zinc-700/60 transition-colors h-full">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <span className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[11px] font-black text-orange-500">
-                                                {step.step}
-                                            </span>
-                                            <h3 className="text-sm font-bold text-zinc-100">{step.title}</h3>
-                                        </div>
-                                        <p className="text-sm text-zinc-500 leading-relaxed mb-4">{step.desc}</p>
-                                        <div className="bg-[#111] border border-zinc-800/60 rounded-lg px-3 py-2 font-mono text-[11px] text-zinc-400">
-                                            {step.code}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                {/* ── Features ──────────────────────────────────────────── */}
-                <section className="border-t border-zinc-800/40">
-                    <div className="max-w-7xl mx-auto px-6 py-20">
-                        <div className="mb-12">
-                            <p className="text-[11px] font-semibold text-orange-500 uppercase tracking-widest mb-3">
-                                Platform Features
-                            </p>
-                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                                <h2 className="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight max-w-sm">
-                                    Everything you need to monitor APIs at scale
-                                </h2>
-                                <p className="text-sm text-zinc-600 max-w-xs">
-                                    Production-grade stack. No vendor lock-in. Your data stays on your infrastructure.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {FEATURES.map((feature) => (
                                 <FeatureCard key={feature.headline} {...feature} />
                             ))}
@@ -513,66 +914,51 @@ export function LandingPage() {
                     </div>
                 </section>
 
-                {/* ── CTA section ──────────────────────────────────────── */}
-                <section className="border-t border-zinc-800/40">
-                    <div className="max-w-7xl mx-auto px-6 py-20">
-                        <div className="relative rounded-3xl overflow-hidden border border-zinc-800/60 bg-gradient-to-br from-zinc-900 to-[#080808] p-12 text-center">
-                            {/* Glow */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-orange-500/10 blur-[60px] pointer-events-none" />
+                {/* ── NEW Minimalist Centered Bottom CTA ───────────────── */}
+                <section className="border-t border-zinc-800/80 bg-[#050505] relative overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-orange-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-                            <div className="relative">
-                                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
-                                    <Zap className="w-6 h-6 text-orange-400" />
-                                </div>
-
-                                <h2 className="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mb-4">
-                                    Ready to add <span className="text-orange-400">pulse</span> to your APIs?
-                                </h2>
-                                <p className="text-zinc-500 text-base max-w-md mx-auto mb-8">
-                                    Request access or explore the live demo with sample data. Setup takes under 5 minutes.
-                                </p>
-                                <div className="flex flex-wrap items-center justify-center gap-3">
-                                    <button
-                                        onClick={() => setModalOpen(true)}
-                                        className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-orange-500/20"
-                                    >
-                                        Request Access
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={handleLiveDemoClick}
-                                        className="inline-flex items-center gap-2 border border-zinc-700 hover:border-zinc-500 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 text-sm font-semibold px-7 py-3.5 rounded-xl transition-all"
-                                    >
-                                        <Activity className="w-4 h-4" />
-                                        Live Demo
-                                    </button>
-                                </div>
-                            </div>
+                    <div className="relative max-w-4xl mx-auto px-6 py-24 sm:py-32 text-center">
+                        <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-6">
+                            <Zap className="w-5 h-5 text-zinc-400" />
+                        </div>
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-100 tracking-tight mb-5">
+                            Ready to monitor <span className="text-zinc-500">at scale?</span>
+                        </h2>
+                        <p className="text-zinc-400 text-[15px] sm:text-base leading-relaxed mb-10 max-w-xl mx-auto">
+                            Stop guessing why your endpoints are slow. Drop in the Pulse API middleware and get complete visibility in under 5 minutes.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <button onClick={handleLiveDemoClick} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-zinc-700 hover:border-zinc-500 bg-[#0a0a0a] text-zinc-300 hover:text-white font-medium text-sm px-8 py-3.5 rounded-xl transition-all">
+                                View Live Demo
+                            </button>
+                            <button onClick={() => setModalOpen(true)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-black font-semibold text-sm px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-orange-500/10">
+                                Request Access <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 </section>
             </main>
 
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <footer className="border-t border-zinc-800/40">
-                <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-5 h-5 rounded-md bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
-                            <Zap className="w-2.5 h-2.5 text-orange-400" />
-                        </div>
-                        <span className="text-xs font-semibold text-zinc-600">Pulse API</span>
-                        <span className="text-xs text-zinc-800">© 2025</span>
+            <footer className="border-t border-zinc-800/80 bg-[#050505]">
+                <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <Zap className="w-3.5 h-3.5 text-zinc-600" />
+                        <span className="text-[13px] font-medium text-zinc-500">Pulse API © 2026</span>
                     </div>
-                    <nav className="flex items-center gap-5">
-                        {['Documentation', 'Status', 'Privacy'].map((label) => (
-                            <button
-                                key={label}
-                                className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors"
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </nav>
+                    <div className="flex gap-6">
+                        {/* 🔥 Real Links Integration */}
+                        <a href="https://github.com/prashantvashisth1/api_monitoring" target="_blank" rel="noreferrer" className="text-[13px] text-zinc-600 hover:text-zinc-300 transition-colors">
+                            GitHub
+                        </a>
+                        <a href="https://www.linkedin.com/in/prashant-vashisth-5ba6a7286/" target="_blank" rel="noreferrer" className="text-[13px] text-zinc-600 hover:text-zinc-300 transition-colors">
+                            LinkedIn
+                        </a>
+                        <button onClick={() => navigate('/dashboard/docs')} className="text-[13px] text-zinc-600 hover:text-zinc-300 transition-colors">
+                            Documentation
+                        </button>
+                    </div>
                 </div>
             </footer>
 
