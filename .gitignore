@@ -1,3 +1,17 @@
+# Server
 server/.env
 server/logs/
 server/node_modules/
+
+# Dashboard
+dashboard/.env
+dashboard/node_modules/
+dashboard/dist/
+
+# Monitoring SDK
+monitoring-sdk/node_modules/
+monitoring-sdk/.env
+
+# OS
+.DS_Store
+Thumbs.db
