@@ -9,7 +9,11 @@
  */
 import axios from 'axios';
 
-const API_BASE_URL = import.meta?.env?.VITE_API_BASE_URL ?? '/api';
+// Use local Vite proxy in development, but hardcode the Render URL in production.
+// This bypasses any Vercel environment variable configuration issues.
+const API_BASE_URL = import.meta.env.DEV 
+    ? '/api' 
+    : 'https://pulse-api-avcn.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
