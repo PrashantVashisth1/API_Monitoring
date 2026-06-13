@@ -4,8 +4,8 @@ const MAX_LIMIT = 1000;
 const QUERY_TIMEOUT_MS = 30000;
 
 export class MetricsRepository extends BaseRepository {
-    constructor({logger: l, postgres: pg} = {}) {
-        super({logger: l});
+    constructor({ logger: l, postgres: pg } = {}) {
+        super({ logger: l });
         this.postgres = pg;
     }
 
@@ -80,7 +80,7 @@ export class MetricsRepository extends BaseRepository {
                 SUM(avg_latency * total_hits) / NULLIF(SUM(total_hits), 0) as avg_latency,
                 MIN(min_latency) as min_latency,
                 MAX(max_latency) as max_latency,
-                time_bucket
+                time_bucket AT TIME ZONE 'UTC' AS time_bucket
             FROM endpoint_metrics
             `;
 
@@ -238,7 +238,7 @@ export class MetricsRepository extends BaseRepository {
 
             let query = `
             SELECT
-                time_bucket,
+                time_bucket AT TIME ZONE 'UTC' AS time_bucket,
                 SUM(avg_latency * total_hits) / NULLIF(SUM(total_hits), 0) as avg_latency,
                 SUM(total_hits) as total_hits,
                 SUM(error_hits) as error_hits
