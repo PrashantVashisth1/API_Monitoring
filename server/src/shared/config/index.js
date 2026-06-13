@@ -10,20 +10,26 @@ const config = {
   node_env: (process.env.NODE_ENV || 'development'),
   port: parseInt((process.env.PORT || "5000"), 10),
 
-  // mongodb
+  // mongodb — accepts MONGODB_URI (Atlas) or MONGO_URI (legacy local)
   mongo: {
-    uri: (process.env.MONGO_URI || 'mongodb://localhost:27017/api_monitoring'),
+    uri: (process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/api_monitoring'),
     dbName: process.env.MONGO_DB_NAME || 'api_monitoring',
   },
 
   // pgsql
-  postgres: {
-    host: process.env.PG_HOST || 'localhost',
-    port: parseInt(process.env.PG_PORT || '5432', 10),
-    database: process.env.PG_DATABASE || 'api_monitoring',
-    user: process.env.PG_USER || 'postgres',
-    password: process.env.PG_PASSWORD || 'postgres',
-  },
+  // Supports both a single DATABASE_URL (Neon, Railway, etc.) and individual PG_* vars.
+  postgres: process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // Required for Neon / managed PG
+      }
+    : {
+        host: process.env.PG_HOST || 'localhost',
+        port: parseInt(process.env.PG_PORT || '5432', 10),
+        database: process.env.PG_DATABASE || 'api_monitoring',
+        user: process.env.PG_USER || 'postgres',
+        password: process.env.PG_PASSWORD || 'postgres',
+      },
 
   // rabbitmq
   rabbitmq: {
