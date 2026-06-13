@@ -31,10 +31,10 @@ const fmtTime = (iso) => {
     // Backend normalizes time_bucket to .toISOString() (UTC with Z).
     // new Date() correctly applies local timezone offset (IST).
     return new Date(iso).toLocaleString('en-IN', {
-        day:    '2-digit',
-        month:  'short',
-        year:   'numeric',
-        hour:   '2-digit',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
         minute: '2-digit',
     });
 };
@@ -43,23 +43,23 @@ const fmtMs = (v) => `${parseFloat(v).toFixed(1)}ms`;
 
 /** Return ISO string for now minus N hours */
 const hoursAgo = (h) => new Date(Date.now() - h * 3600_000).toISOString().slice(0, 16);
-const daysAgo  = (d) => hoursAgo(d * 24);
+const daysAgo = (d) => hoursAgo(d * 24);
 
 /** Quick-range presets */
 const PRESETS = [
-    { label: '1h',  fn: () => hoursAgo(1) },
-    { label: '6h',  fn: () => hoursAgo(6) },
+    { label: '1h', fn: () => hoursAgo(1) },
+    { label: '6h', fn: () => hoursAgo(6) },
     { label: '24h', fn: () => hoursAgo(24) },
-    { label: '7d',  fn: () => daysAgo(7)  },
+    { label: '7d', fn: () => daysAgo(7) },
     { label: '30d', fn: () => daysAgo(30) },
 ];
 
 // ─── Method Badge ─────────────────────────────────────────────────────────────
 const METHOD_COLORS = {
-    GET:    'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    POST:   'text-sky-400    bg-sky-500/10     border-sky-500/20',
-    PUT:    'text-amber-400  bg-amber-500/10   border-amber-500/20',
-    PATCH:  'text-violet-400 bg-violet-500/10  border-violet-500/20',
+    GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    POST: 'text-sky-400    bg-sky-500/10     border-sky-500/20',
+    PUT: 'text-amber-400  bg-amber-500/10   border-amber-500/20',
+    PATCH: 'text-violet-400 bg-violet-500/10  border-violet-500/20',
     DELETE: 'text-red-400    bg-red-500/10     border-red-500/20',
 };
 function MethodBadge({ method }) {
@@ -81,22 +81,22 @@ function LatencyCell({ value }) {
 // ─── Error Rate Cell ──────────────────────────────────────────────────────────
 function ErrorRateCell({ errorHits, totalHits }) {
     const rate = totalHits > 0 ? ((errorHits / totalHits) * 100).toFixed(1) : 0;
-    const cls  = rate < 1 ? 'text-emerald-400' : rate < 5 ? 'text-amber-400' : 'text-red-400';
+    const cls = rate < 1 ? 'text-emerald-400' : rate < 5 ? 'text-amber-400' : 'text-red-400';
     return <span className={`font-mono text-xs tabular-nums ${cls}`}>{rate}%</span>;
 }
 
 // ─── Summary Bar ──────────────────────────────────────────────────────────────
 function SummaryBar({ rows }) {
     if (!rows?.length) return null;
-    const totalHits  = rows.reduce((s, r) => s + r.totalHits, 0);
+    const totalHits = rows.reduce((s, r) => s + r.totalHits, 0);
     const totalError = rows.reduce((s, r) => s + r.errorHits, 0);
     const avgLatency = rows.reduce((s, r) => s + parseFloat(r.avgLatency) * r.totalHits, 0) / (totalHits || 1);
-    const errorRate  = totalHits > 0 ? ((totalError / totalHits) * 100).toFixed(1) : 0;
+    const errorRate = totalHits > 0 ? ((totalError / totalHits) * 100).toFixed(1) : 0;
 
     const stats = [
-        { icon: BarChart2, label: 'Total Hits',   value: totalHits.toLocaleString(), cls: 'text-orange-400' },
-        { icon: Zap,        label: 'Avg Latency',  value: fmtMs(avgLatency),          cls: 'text-sky-400'    },
-        { icon: AlertTriangle, label: 'Error Rate', value: `${errorRate}%`,           cls: errorRate < 5 ? 'text-emerald-400' : 'text-red-400' },
+        { icon: BarChart2, label: 'Total Hits', value: totalHits.toLocaleString(), cls: 'text-orange-400' },
+        { icon: Zap, label: 'Avg Latency', value: fmtMs(avgLatency), cls: 'text-sky-400' },
+        { icon: AlertTriangle, label: 'Error Rate', value: `${errorRate}%`, cls: errorRate < 5 ? 'text-emerald-400' : 'text-red-400' },
     ];
 
     return (
@@ -119,11 +119,12 @@ function SummaryBar({ rows }) {
 // ─── Guest Locked UI ─────────────────────────────────────────────────────────
 function GuestLockedArchive() {
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const handleSignIn = () => {
         // Clear the guest flag so AuthGate renders <Login /> instead of redirecting to /dashboard
-        localStorage.removeItem('apim:guest');
-        navigate('/login', { replace: true });
+        logout();
+        // navigate('/login', { replace: true });
     };
 
     return (
@@ -174,16 +175,16 @@ function GuestLockedArchive() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ArchivePage() {
     const { user } = useAuth();
-    const isGuest  = user?.isGuest === true;
+    const isGuest = user?.isGuest === true;
 
     // Show locked UI for guests — no API calls
     if (isGuest) return <GuestLockedArchive />;
     // ── Filters ────────────────────────────────────────────────────────────────
     const [filters, setFilters] = useState({
         serviceName: '',
-        endpoint:    '',
-        startTime:   daysAgo(7),  // default last 7 days
-        endTime:     new Date().toISOString().slice(0, 16),
+        endpoint: '',
+        startTime: daysAgo(7),  // default last 7 days
+        endTime: new Date().toISOString().slice(0, 16),
     });
     const [activeFilters, setActiveFilters] = useState({ ...filters });
     const [page, setPage] = useState(1);
@@ -191,17 +192,17 @@ export function ArchivePage() {
     // ── Query ──────────────────────────────────────────────────────────────────
     const { data, isLoading, isError, isFetching, refetch } = useQuery({
         queryKey: ['archive', activeFilters, page],
-        queryFn:  () => analyticsApi.getArchive({
+        queryFn: () => analyticsApi.getArchive({
             ...activeFilters,
             limit: PAGE_SIZE,
             page,
         }),
-        select:   (res) => res?.data ?? { rows: [], page: 1, limit: PAGE_SIZE, hasMore: false },
+        select: (res) => res?.data ?? { rows: [], page: 1, limit: PAGE_SIZE, hasMore: false },
         staleTime: 60_000,
         keepPreviousData: true,
     });
 
-    const rows    = data?.rows    ?? [];
+    const rows = data?.rows ?? [];
     const hasMore = data?.hasMore ?? false;
 
     // ── Apply filters ──────────────────────────────────────────────────────────
@@ -213,9 +214,9 @@ export function ArchivePage() {
     const clearFilters = useCallback(() => {
         const defaults = {
             serviceName: '',
-            endpoint:    '',
-            startTime:   daysAgo(7),
-            endTime:     new Date().toISOString().slice(0, 16),
+            endpoint: '',
+            startTime: daysAgo(7),
+            endTime: new Date().toISOString().slice(0, 16),
         };
         setFilters(defaults);
         setActiveFilters(defaults);
@@ -224,8 +225,8 @@ export function ArchivePage() {
 
     const applyPreset = (presetFn) => {
         const start = presetFn();
-        const end   = new Date().toISOString().slice(0, 16);
-        const next  = { ...filters, startTime: start, endTime: end };
+        const end = new Date().toISOString().slice(0, 16);
+        const next = { ...filters, startTime: start, endTime: end };
         setFilters(next);
         setActiveFilters(next);
         setPage(1);

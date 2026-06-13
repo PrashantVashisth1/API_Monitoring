@@ -207,19 +207,26 @@ function TerminalMockup() {
 
 // ─── Request Access Modal ─────────────────────────────────────────────────────
 function RequestAccessModal({ isOpen, onClose }) {
-    const { addToast } = useToast();
+    const addToast = useToast();
     const [form, setForm] = useState({ name: '', email: '', company: '', useCase: '' });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setForm({ name: '', email: '', company: '', useCase: '' });
+        }
+    }, [isOpen]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
             await leadsApi.submitLead(form);
-            addToast({ type: 'success', message: "We'll be in touch within 24 hours!" });
+            addToast("Success! Our team will review your request and contact you within 24 hours.", 'success');
             onClose();
-        } catch {
-            addToast({ type: 'error', message: 'Something went wrong. Please try again.' });
+        } catch (error) {
+            const errorMessage = error?.response?.data?.message || 'Something went wrong. Please try again.';
+            addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }

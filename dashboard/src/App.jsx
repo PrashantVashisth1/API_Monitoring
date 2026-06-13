@@ -20,26 +20,27 @@
  * never called again on this browser.
  */
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { ToastProvider }         from './contexts/ToastContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DashboardLayout }       from './components/layout';
-import ErrorBoundary             from './components/ErrorBoundary';
-import Login                     from './components/Login';
-import { SetupPage }             from './pages/SetupPage';
-import { LandingPage }           from './pages/LandingPage';
-import { authApi }               from './api/api';
+import { DashboardLayout } from './components/layout';
+import ErrorBoundary from './components/ErrorBoundary';
+import Login from './components/Login';
+import { SetupPage } from './pages/SetupPage';
+import { LandingPage } from './pages/LandingPage';
+import { authApi } from './api/api';
+
 
 // ── Lazy-loaded protected pages ───────────────────────────────────────────────
-const OverviewPage  = lazy(() =>
+const OverviewPage = lazy(() =>
     import('./pages/OverviewPage').then(m => ({ default: m.OverviewPage }))
 );
-const SettingsPage  = lazy(() =>
+const SettingsPage = lazy(() =>
     import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage }))
 );
-const OnboardClient     = lazy(() => import('./pages/OnboardClient'));
+const OnboardClient = lazy(() => import('./pages/OnboardClient'));
 const OrganizationsPage = lazy(() =>
     import('./pages/OrganizationsPage').then(m => ({ default: m.OrganizationsPage }))
 );
@@ -140,13 +141,21 @@ function InitializationGate() {
 // ─── AuthGate ─────────────────────────────────────────────────────────────────
 function AuthGate() {
     const { isAuthenticated, isLoading, logout } = useAuth();
+    const location = useLocation();
 
     if (isLoading) {
         return <FullscreenSpinner label="Verifying session" />;
     }
 
     if (!isAuthenticated) {
+        if (location.pathname !== '/login') {
+            return <Navigate to="/login" replace />;
+        }
         return <Login />;
+    }
+
+    if (location.pathname === '/login') {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return (
@@ -154,20 +163,20 @@ function AuthGate() {
             <Suspense fallback={PageSpinner}>
                 <Routes>
                     {/* All protected routes live under /dashboard/* */}
-                    <Route path="/dashboard"                    element={<OverviewPage />} />
-                    <Route path="/dashboard/overview"           element={<OverviewPage />} />
-                    <Route path="/dashboard/onboard"            element={<OnboardClient />} />
-                    <Route path="/dashboard/settings"           element={<SettingsPage />} />
-                    <Route path="/dashboard/organizations"      element={<OrganizationsPage />} />
-                    <Route path="/dashboard/api-keys"           element={<ApiKeysPage />} />
-                    <Route path="/dashboard/traffic"            element={<TrafficPage />} />
-                    <Route path="/dashboard/docs"               element={<DocsPage />} />
-                    <Route path="/dashboard/team"               element={<TeamPage />} />
-                    <Route path="/dashboard/archive"            element={<ArchivePage />} />
+                    <Route path="/dashboard" element={<OverviewPage />} />
+                    <Route path="/dashboard/overview" element={<OverviewPage />} />
+                    <Route path="/dashboard/onboard" element={<OnboardClient />} />
+                    <Route path="/dashboard/settings" element={<SettingsPage />} />
+                    <Route path="/dashboard/organizations" element={<OrganizationsPage />} />
+                    <Route path="/dashboard/api-keys" element={<ApiKeysPage />} />
+                    <Route path="/dashboard/traffic" element={<TrafficPage />} />
+                    <Route path="/dashboard/docs" element={<DocsPage />} />
+                    <Route path="/dashboard/team" element={<TeamPage />} />
+                    <Route path="/dashboard/archive" element={<ArchivePage />} />
                     {/* Legacy paths: redirect gracefully */}
-                    <Route path="/settings"                     element={<Navigate to="/dashboard/settings" replace />} />
-                    <Route path="/onboard"                      element={<Navigate to="/dashboard/onboard" replace />} />
-                    <Route path="*"                             element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
+                    <Route path="/onboard" element={<Navigate to="/dashboard/onboard" replace />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </Suspense>
         </DashboardLayout>
@@ -184,11 +193,11 @@ export default function App() {
                         <BrowserRouter>
                             <Routes>
                                 {/* "/" checks initialization status, then shows Landing or redirects to Setup */}
-                                <Route path="/"      element={<InitializationGate />} />
+                                <Route path="/" element={<InitializationGate />} />
                                 {/* Standalone setup wizard — handles 403 if already initialized */}
                                 <Route path="/setup" element={<SetupPage />} />
                                 {/* All other routes — AuthGate decides login vs dashboard */}
-                                <Route path="/*"     element={<AuthGate />} />
+                                <Route path="/*" element={<AuthGate />} />
                             </Routes>
                         </BrowserRouter>
                     </AuthProvider>

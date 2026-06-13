@@ -25,10 +25,10 @@ import { Modal } from '../components/ui/Modal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const ENV_STYLES = {
-    production:  { cls: 'bg-red-500/10 text-red-400 border-red-500/20',      label: 'Production'  },
-    staging:     { cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20', label: 'Staging'     },
-    development: { cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20',       label: 'Development' },
-    testing:     { cls: 'bg-violet-500/10 text-violet-400 border-violet-500/20', label: 'Testing'  },
+    production: { cls: 'bg-red-500/10 text-red-400 border-red-500/20', label: 'Production' },
+    staging: { cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20', label: 'Staging' },
+    development: { cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20', label: 'Development' },
+    testing: { cls: 'bg-violet-500/10 text-violet-400 border-violet-500/20', label: 'Testing' },
 };
 
 const fmtDate = (d) =>
@@ -152,11 +152,11 @@ function NewKeyModal({ keyData, onClose }) {
 // ─── Generate Key Modal ───────────────────────────────────────────────────────
 function GenerateModal({ clientId, actingUser, onGenerated, onClose }) {
     const [form, setForm] = useState({
-        name:        '',
+        name: '',
         description: '',
         environment: 'production',
     });
-    const [error, setError]         = useState('');
+    const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const ENVIRONMENTS = ['production', 'staging', 'development', 'testing'];
@@ -168,7 +168,7 @@ function GenerateModal({ clientId, actingUser, onGenerated, onClose }) {
         setIsSubmitting(true);
         try {
             const res = await clientApi.createApiKey(clientId, {
-                name:        form.name.trim(),
+                name: form.name.trim(),
                 description: form.description.trim(),
                 environment: form.environment,
             });
@@ -281,8 +281,8 @@ function GenerateModal({ clientId, actingUser, onGenerated, onClose }) {
 
 // ─── Key Row ──────────────────────────────────────────────────────────────────
 function KeyRow({ apiKey }) {
-    const env     = ENV_STYLES[apiKey.environment] ?? ENV_STYLES.production;
-    const days    = daysUntil(apiKey.expiresAt);
+    const env = ENV_STYLES[apiKey.environment] ?? ENV_STYLES.production;
+    const days = daysUntil(apiKey.expiresAt);
     const expired = days <= 0;
     const warning = days > 0 && days <= 30;
 
@@ -332,13 +332,13 @@ function KeyRow({ apiKey }) {
                     'text-xs mt-0.5 font-medium',
                     expired ? 'text-red-400'
                         : warning ? 'text-amber-400'
-                        : 'text-zinc-500',
+                            : 'text-zinc-500',
                 ].join(' ')}>
                     {expired
                         ? 'Expired'
                         : warning
-                        ? `${days}d left`
-                        : fmtDate(apiKey.expiresAt)
+                            ? `${days}d left`
+                            : fmtDate(apiKey.expiresAt)
                     }
                 </p>
             </div>
@@ -357,9 +357,10 @@ function KeyRow({ apiKey }) {
 // ─── Guest Locked UI ─────────────────────────────────────────────────────────
 function GuestLockedApiKeys() {
     const navigate = useNavigate();
-    const handleSignIn = () => {
-        localStorage.removeItem('apim:guest');
-        navigate('/login', { replace: true });
+    const { logout } = useAuth();
+    const handleSignIn = async () => {
+        logout();
+        // navigate('/login', { replace: true });
     };
     return (
         <div className="flex flex-col gap-6">
@@ -402,25 +403,25 @@ function GuestLockedApiKeys() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ApiKeysPage() {
-    const { user }       = useAuth();
-    const isGuest        = user?.isGuest === true;
+    const { user } = useAuth();
+    const isGuest = user?.isGuest === true;
 
     if (isGuest) return <GuestLockedApiKeys />;
 
-    const clientId       = user?.clientId;
-    const canGenerate    = user?.role === 'client_admin' || user?.role === 'super_admin';
+    const clientId = user?.clientId;
+    const canGenerate = user?.role === 'client_admin' || user?.role === 'super_admin';
 
     const [showGenerate, setShowGenerate] = useState(false);
-    const [newKeyData,   setNewKeyData]   = useState(null); // set after generation → shows modal
+    const [newKeyData, setNewKeyData] = useState(null); // set after generation → shows modal
 
     const queryClient = useQueryClient();
 
     // ── Fetch keys ────────────────────────────────────────────────────────────
     const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['api-keys', clientId],
-        queryFn:  () => clientApi.getClientApiKeys(clientId),
-        enabled:  !!clientId,
-        select:   (res) => res?.data ?? [],
+        queryFn: () => clientApi.getClientApiKeys(clientId),
+        enabled: !!clientId,
+        select: (res) => res?.data ?? [],
     });
 
     const keys = data ?? [];

@@ -138,15 +138,20 @@ export function AuthProvider({ children }) {
     // ── Logout ──────────────────────────────────────────────────────────────
     const logout = useCallback(async () => {
         // Clear guest session
+        const isGuest = localStorage.getItem(GUEST_KEY) === 'true';
         localStorage.removeItem(GUEST_KEY);
-
-        try {
-            await authApi.logout(); // GET /api/auth/logout — clears httpOnly cookie
-        } catch {
-            // Swallow network errors; still clear local state
-        }
-        queryClient.clear();
         setUser(null);
+        queryClient.clear();
+
+        if (!isGuest) {
+            try {
+                await authApi.logout();
+            } catch {
+                // Ignore network errors
+            }
+        }
+        // queryClient.clear();
+        // setUser(null);
         // Don't reset setupRequired — the platform is still initialized
     }, [queryClient]);
 
